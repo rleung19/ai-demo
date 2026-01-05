@@ -1,0 +1,213 @@
+import { KPIDetailData } from '@/app/lib/types/kpi';
+
+export const kpi10DemandForecastData: KPIDetailData = {
+  metadata: {
+    id: 10,
+    title: 'Demand Forecast + Confidence',
+    owners: ['CFO', 'COO'],
+    predictionHorizon: '14-42 Days',
+    modelType: 'Prophet + XGBoost Ensemble',
+    trainingData: '36 months demand data + external signals',
+    confidence: 92,
+    lastUpdate: 'January 1, 2026',
+    dataSources: [
+      'Historical sales',
+      'Weather data',
+      'Fashion trends',
+      'Economic indicators',
+      'Social signals',
+    ],
+  },
+  metrics: [
+    {
+      label: 'Q1 Forecast',
+      value: '$8.2M',
+      trend: 'neutral',
+      color: 'emerald',
+    },
+    {
+      label: 'Confidence Range',
+      value: '±$320K',
+      trend: 'neutral',
+      color: 'blue',
+    },
+    {
+      label: 'Forecast Accuracy',
+      value: '92%',
+      trend: 'up',
+      trendValue: '↑ vs. baseline',
+      color: 'teal',
+    },
+    {
+      label: 'Confidence Level',
+      value: '78%',
+      trend: 'neutral',
+      color: 'amber',
+    },
+  ],
+  chartData: {
+    labels: [
+      'Jan W1',
+      'Jan W2',
+      'Jan W3',
+      'Jan W4',
+      'Feb W1',
+      'Feb W2',
+      'Feb W3',
+      'Feb W4',
+      'Mar W1',
+      'Mar W2',
+      'Mar W3',
+      'Mar W4',
+    ],
+    datasets: [
+      {
+        label: 'Forecast ($M)',
+        data: [0.58, 0.62, 0.65, 0.68, 0.72, 0.74, 0.78, 0.82, 0.85, 0.88, 0.92, 0.96],
+        borderColor: '#8b5cf6',
+        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+        fill: true,
+        tension: 0.4,
+        borderWidth: 3,
+      },
+      {
+        label: 'Actual ($M)',
+        data: [0.56, 0.64, 0.67, null, null, null, null, null, null, null, null, null],
+        borderColor: '#10b981',
+        borderWidth: 2,
+        pointRadius: 4,
+        pointBackgroundColor: '#10b981',
+      },
+      {
+        label: 'Upper Bound',
+        data: [0.64, 0.68, 0.72, 0.75, 0.8, 0.82, 0.86, 0.9, 0.94, 0.97, 1.01, 1.05],
+        borderColor: 'rgba(139, 92, 246, 0.3)',
+        borderDash: [3, 3],
+        borderWidth: 1,
+        pointRadius: 0,
+        fill: false,
+      },
+      {
+        label: 'Lower Bound',
+        data: [0.52, 0.56, 0.58, 0.61, 0.64, 0.66, 0.7, 0.74, 0.76, 0.79, 0.83, 0.87],
+        borderColor: 'rgba(139, 92, 246, 0.3)',
+        borderDash: [3, 3],
+        borderWidth: 1,
+        pointRadius: 0,
+        fill: false,
+      },
+    ],
+  },
+  chartOptions: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top' },
+    },
+    scales: {
+      x: { grid: { display: false } },
+      y: {
+        grid: { display: true },
+        min: 0.4,
+        max: 1.2,
+        ticks: { callback: (v: any) => '$' + v + 'M' },
+      },
+    },
+  },
+  tableData: [
+    {
+      category: 'Dresses',
+      q1Forecast: '$2.4M',
+      vsQ12025: '+18%',
+      confidence: '94%',
+      keyDriver: 'Spring events demand',
+    },
+    {
+      category: 'Outerwear',
+      q1Forecast: '$1.8M',
+      vsQ12025: '-8%',
+      confidence: '82%',
+      keyDriver: 'Mild winter forecast',
+    },
+    {
+      category: 'Shoes',
+      q1Forecast: '$1.5M',
+      vsQ12025: '+12%',
+      confidence: '88%',
+      keyDriver: 'New collection launch',
+    },
+    {
+      category: 'Accessories',
+      q1Forecast: '$1.2M',
+      vsQ12025: '+22%',
+      confidence: '91%',
+      keyDriver: 'Jewelry trend uptick',
+    },
+    {
+      category: 'Basics',
+      q1Forecast: '$1.3M',
+      vsQ12025: '+5%',
+      confidence: '96%',
+      keyDriver: 'Stable demand',
+    },
+  ],
+  insight: {
+    title: '🧠 AI Model Insight',
+    content:
+      'Demand forecast model (Prophet + XGBoost ensemble) incorporates weather data, fashion trends, economic indicators, and social signals. Model detected mild winter pattern → recommending 8% reduction in Outerwear inventory. 92% backtest accuracy on last 12 months.',
+    type: 'info',
+  },
+  actions: [
+    {
+      id: '1',
+      title: 'Reduce Outerwear Inventory by 8%',
+      description:
+        'Cut Q2 outerwear orders by $144K based on mild winter forecast. Avoids potential markdown losses. Reallocate budget to Dresses (+12%).',
+      priority: 'high',
+      owner: 'CFO',
+      dueDate: '14 days',
+      expectedOutcome: 'Avoid markdowns',
+      impact: 'Saves $320K markdown risk',
+    },
+    {
+      id: '2',
+      title: 'Increase Dress Inventory for Spring',
+      description:
+        'Spring events driving +18% demand. Increase Dress inventory by $288K to capture full demand without stockouts.',
+      priority: 'medium',
+      owner: 'COO',
+      dueDate: '21 days',
+      expectedOutcome: 'Capture demand',
+      impact: '+$432K revenue capture',
+    },
+    {
+      id: '3',
+      title: 'Adjust Marketing Spend to Match Demand',
+      description:
+        'Reduce January marketing by $50K/month (seasonal low). Shift to February-March when demand peaks.',
+      priority: 'medium',
+      owner: 'CMO',
+      dueDate: 'Execute now',
+      expectedOutcome: 'Better efficiency',
+      impact: '+15% marketing efficiency',
+    },
+    {
+      id: '4',
+      title: 'Negotiate Extended Supplier Terms',
+      description:
+        'Request 15-day payment term extension from top 3 suppliers to improve cash flow during inventory buildup period.',
+      priority: 'low',
+      owner: 'CFO',
+      dueDate: '7 days',
+      expectedOutcome: 'Better cash flow',
+      impact: '+$240K working capital',
+    },
+  ],
+  impact: {
+    revenueImpact: 432000,
+    costImpact: -320000,
+    roi: 35,
+    description: 'Net Impact: $432K revenue capture, $320K markdown savings',
+  },
+};
+

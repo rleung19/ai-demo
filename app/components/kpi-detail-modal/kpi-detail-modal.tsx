@@ -1,0 +1,580 @@
+'use client';
+
+import { useEffect } from 'react';
+import { KPIDetailData } from '@/app/lib/types/kpi';
+import ChartWrapper from '../charts/chart-wrapper';
+
+interface KPIDetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  kpiData: KPIDetailData | null;
+}
+
+export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailModalProps) {
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen || !kpiData) return null;
+
+  const { metadata, metrics, actions, impact, alert, cohorts, insight, chartData, chartOptions } =
+    kpiData;
+
+  // Determine chart type based on KPI ID
+  const getChartType = () => {
+    if (metadata.id === 1) return 'bar'; // Churn - stacked bar
+    if (metadata.id === 2) return 'bar'; // Stockout - horizontal bar
+    if (metadata.id === 3) return 'line'; // Price elasticity - line with dual axis
+    if (metadata.id === 4) return 'bar'; // CAC - bar
+    if (metadata.id === 5) return 'bar'; // Return rate - grouped bar
+    if (metadata.id === 6) return 'line'; // Email decay - line
+    if (metadata.id === 7) return 'bar'; // Supply chain - horizontal bar
+    if (metadata.id === 8) return 'line'; // Conversion - line with bands
+    if (metadata.id === 9) return 'bar'; // CLV - bar
+    if (metadata.id === 10) return 'line'; // Demand forecast - line with confidence bands
+    return 'line';
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
+      onClick={onClose}
+    >
+      <div
+        className="rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl"
+        style={{
+          backgroundColor: 'var(--bg-secondary)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Sticky Header */}
+        <div
+          className="sticky top-0 z-10 px-6 py-4 border-b"
+          style={{
+            backgroundColor: 'var(--bg-secondary)',
+            borderColor: 'var(--border-color)',
+          }}
+        >
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <span
+                  className="px-3 py-1 text-xs font-bold rounded-full font-mono"
+                  style={{
+                    color: 'var(--accent-teal)',
+                    backgroundColor: 'rgba(20, 184, 166, 0.2)',
+                  }}
+                >
+                  KPI #{metadata.id}
+                </span>
+                <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                  {metadata.title}
+                </h2>
+              </div>
+              <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
+                {metadata.predictionHorizon} horizon • {metadata.owners.join(' / ')}
+              </p>
+              <div className="flex items-center gap-2">
+                {metadata.owners.map((owner) => (
+                  <span
+                    key={owner}
+                    className="px-2 py-1 text-xs font-semibold rounded"
+                    style={{
+                      backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                      color: 'var(--accent-violet)',
+                    }}
+                  >
+                    {owner}
+                  </span>
+                ))}
+                <span
+                  className="px-2 py-1 text-xs font-semibold rounded"
+                  style={{
+                    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                    color: 'var(--accent-violet)',
+                  }}
+                >
+                  {metadata.predictionHorizon}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="ml-4 p-2 rounded-lg transition-colors"
+              style={{
+                color: 'var(--text-secondary)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)';
+                e.currentTarget.style.color = 'var(--text-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }}
+              aria-label="Close modal"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable Body */}
+        <div className="overflow-y-auto max-h-[calc(90vh-120px)] px-6 py-6">
+          {/* Alert Banner */}
+          {alert && (
+            <div
+              className="rounded-xl p-4 mb-6 flex items-start gap-4"
+              style={{
+                background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(244, 63, 94, 0.15) 100%)',
+                border: '1px solid rgba(249, 115, 22, 0.3)',
+              }}
+            >
+              <div className="text-2xl">{alert.icon}</div>
+              <div className="flex-1">
+                <h5 className="font-semibold mb-1" style={{ color: '#f59e0b' }}>
+                  {alert.title}
+                </h5>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  {alert.description}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Key Metrics Grid */}
+          <div className="mb-6">
+            <h3 className="text-sm uppercase font-semibold mb-4 tracking-wide" style={{ color: 'var(--text-muted)' }}>
+              Key Metrics
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {metrics.map((metric, idx) => (
+                <div
+                  key={idx}
+                  className="rounded-xl p-5 border text-center"
+                  style={{
+                    backgroundColor: 'var(--bg-card)',
+                    borderColor: 'var(--border-color)',
+                  }}
+                >
+                  <div className="text-xs uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>
+                    {metric.label}
+                  </div>
+                  <div
+                    className={`text-3xl font-bold font-mono mb-1 ${
+                      metric.color === 'emerald'
+                        ? 'text-emerald-500'
+                        : metric.color === 'amber'
+                          ? 'text-amber-500'
+                          : metric.color === 'rose'
+                            ? 'text-rose-500'
+                            : metric.color === 'teal'
+                              ? 'text-teal-500'
+                              : 'text-blue-500'
+                    }`}
+                  >
+                    {metric.value}
+                  </div>
+                  {metric.trendValue && (
+                    <div
+                      className="text-xs"
+                      style={{
+                        color:
+                          metric.trend === 'up'
+                            ? '#10b981'
+                            : metric.trend === 'down'
+                              ? '#f43f5e'
+                              : 'var(--text-muted)',
+                      }}
+                    >
+                      {metric.trendValue}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Main Visualization Chart */}
+          {chartData && (
+            <div className="mb-6">
+              <h3 className="text-sm uppercase font-semibold mb-4 tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                Main Visualization
+              </h3>
+              <div
+                className="rounded-xl p-6 border"
+                style={{
+                  backgroundColor: 'var(--bg-card)',
+                  borderColor: 'var(--border-color)',
+                }}
+              >
+                <ChartWrapper
+                  type={getChartType()}
+                  data={chartData}
+                  options={chartOptions}
+                  height={300}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Cohort Grid */}
+          {cohorts && cohorts.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm uppercase font-semibold mb-4 tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                Segment Breakdown
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {cohorts.map((cohort, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-xl p-5 border"
+                    style={{
+                      backgroundColor: 'var(--bg-card)',
+                      borderColor:
+                        cohort.riskLevel === 'high'
+                          ? 'rgba(244, 63, 94, 0.3)'
+                          : cohort.riskLevel === 'medium'
+                            ? 'rgba(245, 158, 11, 0.3)'
+                            : 'rgba(16, 185, 129, 0.3)',
+                    }}
+                  >
+                    <div className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                      {cohort.name}
+                    </div>
+                    <div
+                      className="text-2xl font-bold font-mono mb-1"
+                      style={{
+                        color:
+                          cohort.riskLevel === 'high'
+                            ? '#f43f5e'
+                            : cohort.riskLevel === 'medium'
+                              ? '#f59e0b'
+                              : '#10b981',
+                      }}
+                    >
+                      {cohort.value}
+                    </div>
+                    <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      {cohort.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Data Table */}
+          {kpiData.tableData && kpiData.tableData.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm uppercase font-semibold mb-4 tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                Detailed Data
+              </h3>
+              <div
+                className="overflow-x-auto rounded-xl border"
+                style={{
+                  backgroundColor: 'var(--bg-card)',
+                  borderColor: 'var(--border-color)',
+                }}
+              >
+                <table className="w-full text-sm">
+                  <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                    <tr>
+                      {Object.keys(kpiData.tableData[0]).map((key) => (
+                        <th
+                          key={key}
+                          className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
+                          {key
+                            .replace(/([A-Z])/g, ' $1')
+                            .trim()
+                            .replace(/^\w/, (c) => c.toUpperCase())}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {kpiData.tableData.map((row: any, idx: number) => (
+                      <tr
+                        key={idx}
+                        className="border-t transition-colors"
+                        style={{
+                          borderColor: 'var(--border-color)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        {Object.values(row).map((value: any, cellIdx: number) => (
+                          <td key={cellIdx} className="px-4 py-3" style={{ color: 'var(--text-primary)' }}>
+                            {String(value)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Insight Box */}
+          {insight && (
+            <div
+              className="mb-6 rounded-xl p-5 border"
+              style={{
+                backgroundColor:
+                  insight.type === 'success'
+                    ? 'rgba(16, 185, 129, 0.1)'
+                    : insight.type === 'warning'
+                      ? 'rgba(245, 158, 11, 0.1)'
+                      : 'rgba(59, 130, 246, 0.1)',
+                borderColor:
+                  insight.type === 'success'
+                    ? 'rgba(16, 185, 129, 0.3)'
+                    : insight.type === 'warning'
+                      ? 'rgba(245, 158, 11, 0.3)'
+                      : 'rgba(59, 130, 246, 0.3)',
+              }}
+            >
+              <h5
+                className="font-semibold mb-2"
+                style={{
+                  color:
+                    insight.type === 'success'
+                      ? '#10b981'
+                      : insight.type === 'warning'
+                        ? '#f59e0b'
+                        : '#3b82f6',
+                }}
+              >
+                {insight.title}
+              </h5>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                {insight.content}
+              </p>
+            </div>
+          )}
+
+          {/* AI Model Information */}
+          <div
+            className="rounded-xl p-6 mb-6 border"
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              borderColor: 'var(--border-color)',
+            }}
+          >
+            <h3 className="text-sm uppercase font-semibold mb-4 tracking-wide" style={{ color: 'var(--text-muted)' }}>
+              AI Model Information
+            </h3>
+            <div className="space-y-3 text-sm">
+              <div>
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Model Type:
+                </span>
+                <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>
+                  {metadata.modelType}
+                </span>
+              </div>
+              <div>
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Training Data:
+                </span>
+                <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>
+                  {metadata.trainingData}
+                </span>
+              </div>
+              <div>
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Confidence Level:
+                </span>
+                <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>
+                  {metadata.confidence}%
+                </span>
+              </div>
+              <div>
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Last Update:
+                </span>
+                <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>
+                  {metadata.lastUpdate}
+                </span>
+              </div>
+              <div>
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Data Sources:
+                </span>
+                <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>
+                  {metadata.dataSources.join(', ')}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Recommended Actions */}
+          <div className="mb-6">
+            <h3 className="text-sm uppercase font-semibold mb-4 tracking-wide" style={{ color: 'var(--text-muted)' }}>
+              AI-Recommended Actions
+            </h3>
+            <div className="space-y-4">
+              {actions.map((action) => (
+                <div
+                  key={action.id}
+                  className="p-5 rounded-xl border-l-4"
+                  style={{
+                    borderLeftColor:
+                      action.priority === 'high'
+                        ? '#f43f5e'
+                        : action.priority === 'medium'
+                          ? '#f59e0b'
+                          : '#14b8a6',
+                    backgroundColor:
+                      action.priority === 'high'
+                        ? 'rgba(244, 63, 94, 0.1)'
+                        : action.priority === 'medium'
+                          ? 'rgba(245, 158, 11, 0.1)'
+                          : 'rgba(20, 184, 166, 0.1)',
+                  }}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {action.title}
+                    </h4>
+                    <span
+                      className="px-2 py-1 text-xs font-semibold rounded"
+                      style={{
+                        backgroundColor:
+                          action.priority === 'high'
+                            ? 'rgba(244, 63, 94, 0.2)'
+                            : action.priority === 'medium'
+                              ? 'rgba(245, 158, 11, 0.2)'
+                              : 'rgba(20, 184, 166, 0.2)',
+                        color:
+                          action.priority === 'high'
+                            ? '#f43f5e'
+                            : action.priority === 'medium'
+                              ? '#f59e0b'
+                              : '#14b8a6',
+                      }}
+                    >
+                      {action.priority.toUpperCase()}
+                    </span>
+                  </div>
+                  <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
+                    {action.description}
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span
+                      className="px-3 py-1 rounded"
+                      style={{
+                        backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                        color: 'var(--accent-violet)',
+                      }}
+                    >
+                      {action.owner}
+                    </span>
+                    <span
+                      className="px-3 py-1 rounded"
+                      style={{
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        color: '#3b82f6',
+                      }}
+                    >
+                      Due: {action.dueDate}
+                    </span>
+                    {action.impact && (
+                      <span
+                        className="px-3 py-1 rounded"
+                        style={{
+                          backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                          color: '#10b981',
+                        }}
+                      >
+                        {action.impact}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Business Impact Summary */}
+          {impact && (
+            <div
+              className="rounded-xl p-6 border"
+              style={{
+                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)',
+                borderColor: 'rgba(139, 92, 246, 0.3)',
+              }}
+            >
+              <h3 className="text-sm uppercase font-semibold mb-4 tracking-wide" style={{ color: 'var(--accent-violet)' }}>
+                Business Impact Summary
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                    Revenue Impact
+                  </div>
+                  <div className="text-2xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
+                    ${Math.abs(impact.revenueImpact / 1000).toFixed(0)}K
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                    Cost Impact
+                  </div>
+                  <div className="text-2xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
+                    ${Math.abs(impact.costImpact / 1000).toFixed(0)}K
+                  </div>
+                </div>
+                {impact.roi !== undefined && (
+                  <div>
+                    <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                      ROI
+                    </div>
+                    <div className="text-2xl font-bold font-mono" style={{ color: '#10b981' }}>
+                      {impact.roi > 0 ? '+' : ''}
+                      {impact.roi.toFixed(0)}%
+                    </div>
+                  </div>
+                )}
+              </div>
+              {impact.description && (
+                <div className="mt-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  {impact.description}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
