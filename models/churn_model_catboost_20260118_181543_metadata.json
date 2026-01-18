@@ -1,0 +1,37 @@
+{
+  "model_name": "CatBoost",
+  "model_path": "/Users/rleung/Projects/aiworkshop2026/ai-demo/models/churn_model_catboost_20260118_181543.pkl",
+  "feature_cols": [
+    "AGE",
+    "GENDER_CODE",
+    "SIGNUP_QUARTER_CODE",
+    "MEMBERSHIP_YEARS",
+    "LOGIN_FREQUENCY",
+    "SESSION_DURATION_AVG",
+    "PAGES_PER_SESSION",
+    "EMAIL_OPEN_RATE",
+    "SOCIAL_MEDIA_ENGAGEMENT_SCORE",
+    "MOBILE_APP_USAGE",
+    "TOTAL_PURCHASES",
+    "AVERAGE_ORDER_VALUE",
+    "DAYS_SINCE_LAST_PURCHASE",
+    "LIFETIME_VALUE",
+    "CART_ABANDONMENT_RATE",
+    "WISHLIST_ITEMS",
+    "CUSTOMER_SERVICE_CALLS",
+    "RETURNS_RATE",
+    "PRODUCT_REVIEWS_WRITTEN",
+    "DISCOUNT_USAGE_RATE",
+    "PAYMENT_METHOD_DIVERSITY",
+    "CREDIT_BALANCE"
+  ],
+  "timestamp": "20260118_181543",
+  "performance": {
+    "auc": 0.9254659416961032,
+    "accuracy": 0.9199738334060183,
+    "precision": 0.9291479820627803,
+    "recall": 0.7824773413897281,
+    "f1": 0.8495284952849529
+  },
+  "optimal_threshold": 0.4500000000000001
+}

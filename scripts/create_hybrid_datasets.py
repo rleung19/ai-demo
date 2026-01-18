@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Create hybrid datasets:
-1. Mapped dataset (4,142 rows) - for API/demo with real USER_IDs
+1. Mapped dataset (5,003 rows) - for API/demo with real USER_IDs (all users)
 2. Training dataset (remaining rows) - for model training without user mapping
 """
 
@@ -83,10 +83,10 @@ def get_user_ids(limit=None):
         )
         
         cursor = connection.cursor()
+        # Get ALL users (not just active) to map all 5,003 users
         query = """
             SELECT ID 
             FROM ADMIN.USERS 
-            WHERE IS_ACTIVE = 1
             ORDER BY ID
         """
         cursor.execute(query)
