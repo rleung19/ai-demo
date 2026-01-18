@@ -133,7 +133,7 @@ export function transformChurnDataToKPI(
     return {
       name: `${cohort.cohort} Customers`,
       value: formatPercentage(cohort.averageRiskScore),
-      label: `${formatNumber(cohort.customerCount)} customers • ${formatCurrency(
+      label: `${formatNumber(cohort.customerCount)} total • ${formatNumber(cohort.atRiskCount)} at-risk • ${formatCurrency(
         cohort.ltvAtRisk
       )} LTV`,
       riskLevel,
@@ -157,14 +157,16 @@ export function transformChurnDataToKPI(
               return '#10b981';
             }),
             borderRadius: 6,
+            yAxisID: 'y',
           },
           {
-            label: 'Customer Count (scaled)',
-            data: cohorts.map((c) => c.customerCount),
-            backgroundColor: 'rgba(59, 130, 246, 0.3)',
-            borderColor: '#3b82f6',
+            label: 'At-Risk Count',
+            data: cohorts.map((c) => c.atRiskCount),
+            backgroundColor: 'rgba(244, 63, 94, 0.3)',
+            borderColor: '#f43f5e',
             borderWidth: 2,
             borderRadius: 6,
+            yAxisID: 'y1',
           },
         ],
       };
@@ -204,8 +206,43 @@ export function transformChurnDataToKPI(
     },
     metrics: transformedMetrics,
     chartData: transformedChartData,
-    chartOptions: kpi1ChurnRiskData.chartOptions,
+    chartOptions: {
+      ...kpi1ChurnRiskData.chartOptions,
+      scales: {
+        x: {
+          grid: { display: false },
+        },
+        y: {
+          type: 'linear' as const,
+          position: 'left' as const,
+          title: {
+            display: true,
+            text: 'Churn Probability %',
+          },
+          min: 0,
+          max: 100,
+          ticks: {
+            callback: (value: any) => value + '%',
+          },
+          grid: { display: true },
+        },
+        y1: {
+          type: 'linear' as const,
+          position: 'right' as const,
+          title: {
+            display: true,
+            text: 'At-Risk Count',
+          },
+          min: 0,
+          ticks: {
+            callback: (value: any) => Math.round(value).toLocaleString(),
+          },
+          grid: { display: false },
+        },
+      },
+    },
     cohorts: transformedCohorts,
+    tableData: kpi1ChurnRiskData.tableData, // Include risk factors table data
     actions: kpi1ChurnRiskData.actions,
     impact: kpi1ChurnRiskData.impact,
     insight: kpi1ChurnRiskData.insight,

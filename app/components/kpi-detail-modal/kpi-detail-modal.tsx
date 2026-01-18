@@ -318,11 +318,11 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
             </div>
           )}
 
-          {/* Data Table */}
-          {kpiData.tableData && kpiData.tableData.length > 0 && (
+          {/* Top Churn Risk Factors Table */}
+          {kpiData.tableData && kpiData.tableData.length > 0 && metadata.id === 1 && (
             <div className="mb-6">
               <h3 className="text-sm uppercase font-semibold mb-4 tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                Detailed Data
+                Top Churn Risk Factors
               </h3>
               <div
                 className="overflow-x-auto rounded-xl border"
@@ -334,42 +334,82 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
                 <table className="w-full text-sm">
                   <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
                     <tr>
-                      {Object.keys(kpiData.tableData[0]).map((key) => (
-                        <th
-                          key={key}
-                          className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
-                          style={{ color: 'var(--text-secondary)' }}
-                        >
-                          {key
-                            .replace(/([A-Z])/g, ' $1')
-                            .trim()
-                            .replace(/^\w/, (c) => c.toUpperCase())}
-                        </th>
-                      ))}
+                      <th
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        RISK FACTOR
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        IMPACT SCORE
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        AFFECTED CUSTOMERS
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        PRIMARY SEGMENT
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {kpiData.tableData.map((row: any, idx: number) => (
-                      <tr
-                        key={idx}
-                        className="border-t transition-colors"
-                        style={{
-                          borderColor: 'var(--border-color)',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        {Object.values(row).map((value: any, cellIdx: number) => (
-                          <td key={cellIdx} className="px-4 py-3" style={{ color: 'var(--text-primary)' }}>
-                            {String(value)}
+                    {kpiData.tableData.map((row: any, idx: number) => {
+                      // Parse impact score to determine color
+                      const impactScore = parseFloat(String(row.impactScore || row.impact_score || '0').replace('%', ''));
+                      let impactColor = '#10b981'; // green (low)
+                      if (impactScore >= 70) {
+                        impactColor = '#f43f5e'; // red (high)
+                      } else if (impactScore >= 50) {
+                        impactColor = '#f59e0b'; // orange (medium)
+                      }
+
+                      return (
+                        <tr
+                          key={idx}
+                          className="border-t transition-colors"
+                          style={{
+                            borderColor: 'var(--border-color)',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <td className="px-4 py-3" style={{ color: 'var(--text-primary)' }}>
+                            {row.riskFactor || row.risk_factor || 'N/A'}
                           </td>
-                        ))}
-                      </tr>
-                    ))}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: impactColor }}
+                              />
+                              <span style={{ color: 'var(--text-primary)' }}>
+                                {row.impactScore || row.impact_score || 'N/A'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3" style={{ color: 'var(--text-primary)' }}>
+                            {typeof row.affectedCustomers === 'number'
+                              ? row.affectedCustomers.toLocaleString()
+                              : row.affectedCustomers || row.affected_customers || 'N/A'}
+                          </td>
+                          <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
+                            {row.primarySegment || row.primary_segment || 'N/A'}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
