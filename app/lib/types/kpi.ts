@@ -16,6 +16,7 @@ export interface KPIMetadata {
   confidence: number;
   lastUpdate: string;
   dataSources: string[];
+  note?: string; // For fallback data indicator
 }
 
 export interface MetricCard {

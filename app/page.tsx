@@ -167,6 +167,11 @@ export default function Home() {
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const [selectedTime, setSelectedTime] = useState<string>('30d');
   const [isDark, setIsDark] = useState(true);
+  const [isLoadingKPI, setIsLoadingKPI] = useState(false);
+  const [kpiError, setKpiError] = useState<string | null>(null);
+  const [kpi1Data, setKpi1Data] = useState<KPIDetailData | null>(null);
+  const [isLoadingKPI1, setIsLoadingKPI1] = useState(true);
+  const [usingFallbackData, setUsingFallbackData] = useState(false);
 
   // Theme toggle handler
   useEffect(() => {
@@ -197,12 +202,59 @@ export default function Home() {
     document.documentElement.classList.toggle('light');
   };
 
-  const handleKPIClick = (kpiId: number) => {
-    const data = getKPIData(kpiId);
-    if (data) {
-      setKpiData(data);
-      setSelectedKPI(kpiId);
-      setIsModalOpen(true);
+  // Load KPI #1 data on mount (Task 5.3)
+  useEffect(() => {
+    let cancelled = false;
+    
+    async function loadKPI1Data() {
+      setIsLoadingKPI1(true);
+      setKpiError(null);
+      try {
+        const data = await getKPIData(1);
+        if (!cancelled) {
+          setKpi1Data(data);
+          setUsingFallbackData(data?.metadata.note?.includes('fallback') || false);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to load KPI #1 data:', error);
+          setKpiError('Failed to load churn data');
+          // Use fallback data
+          const fallbackData = await getKPIData(1);
+          if (fallbackData) {
+            setKpi1Data(fallbackData);
+            setUsingFallbackData(true);
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingKPI1(false);
+        }
+      }
+    }
+    
+    loadKPI1Data();
+    
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleKPIClick = async (kpiId: number) => {
+    setIsLoadingKPI(true);
+    setKpiError(null);
+    try {
+      const data = await getKPIData(kpiId);
+      if (data) {
+        setKpiData(data);
+        setSelectedKPI(kpiId);
+        setIsModalOpen(true);
+      }
+    } catch (error) {
+      console.error('Failed to load KPI data:', error);
+      setKpiError('Failed to load KPI data');
+    } finally {
+      setIsLoadingKPI(false);
     }
   };
 
@@ -661,8 +713,68 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredKPIs.map((kpi) => {
+              // Task 5.3: Use real-time data for KPI #1
+              if (kpi.id === 1) {
+                if (isLoadingKPI1) {
+                  return (
+                    <div
+                      key={kpi.id}
+                      className="rounded-2xl p-6 border animate-pulse"
+                      style={{
+                        backgroundColor: 'var(--bg-card)',
+                        borderColor: 'var(--border-color)',
+                      }}
+                    >
+                      <div className="h-4 bg-gray-300 rounded w-3/4 mb-4"></div>
+                      <div className="h-8 bg-gray-300 rounded w-1/2 mb-2"></div>
+                      <div className="h-4 bg-gray-300 rounded w-2/3"></div>
+                    </div>
+                  );
+                }
+
+                // Use real-time data from API
+                const realTimeKPI = kpi1Data
+                  ? {
+                      ...kpi,
+                      primaryMetric: kpi1Data.metrics[0]?.value || kpi.primaryMetric,
+                      primaryLabel: kpi1Data.metrics[0]?.label || kpi.primaryLabel,
+                      secondaryMetric: kpi1Data.metrics[1]?.value || kpi.secondaryMetric,
+                      secondaryLabel: kpi1Data.metrics[1]?.label || kpi.secondaryLabel,
+                      confidence: kpi1Data.metadata.confidence || kpi.confidence,
+                      status: (kpi1Data.metrics[0]?.value && parseInt(kpi1Data.metrics[0].value.replace(/,/g, '')) > 1000) ? 'alert' as const : kpi.status,
+                    }
+                  : kpi;
+
+                const miniChartData = kpi1Data?.chartData || getMiniChartData(kpi.id, kpi.chartType);
+                const firstDataset = miniChartData.datasets?.[0] as any;
+                const actualChartType = firstDataset?.borderColor !== undefined ? 'line' : 'bar';
+
+                return (
+                  <div key={kpi.id} className="relative">
+                    {usingFallbackData && (
+                      <div
+                        className="absolute top-2 right-2 px-2 py-1 rounded text-xs font-semibold z-10"
+                        style={{
+                          backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                          color: '#f59e0b',
+                        }}
+                        title="Using cached data - API unavailable"
+                      >
+                        ⚠️ Cached
+                      </div>
+                    )}
+                    <KPICard
+                      {...realTimeKPI}
+                      chartType={actualChartType}
+                      chartData={miniChartData}
+                      onClick={() => handleKPIClick(kpi.id)}
+                    />
+                  </div>
+                );
+              }
+
+              // Other KPIs - use static data
               const miniChartData = getMiniChartData(kpi.id, kpi.chartType);
-              // Determine chart type from data: if it has borderColor, it's a line chart
               const firstDataset = miniChartData.datasets?.[0] as any;
               const actualChartType = firstDataset?.borderColor !== undefined ? 'line' : 'bar';
               return (

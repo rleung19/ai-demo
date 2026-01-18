@@ -29,7 +29,27 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen || !kpiData) return null;
+  if (!isOpen) return null;
+
+  // Show loading state if data is not available
+  if (!kpiData) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-black/50">
+        <div
+          className="rounded-2xl p-8 border max-w-md w-full"
+          style={{
+            backgroundColor: 'var(--bg-card)',
+            borderColor: 'var(--border-color)',
+          }}
+        >
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--accent-teal)' }}></div>
+            <p style={{ color: 'var(--text-secondary)' }}>Loading KPI data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const { metadata, metrics, actions, impact, alert, cohorts, insight, chartData, chartOptions } =
     kpiData;
@@ -89,7 +109,7 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
               <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
                 {metadata.predictionHorizon} horizon • {metadata.owners.join(' / ')}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {metadata.owners.map((owner) => (
                   <span
                     key={owner}
@@ -111,6 +131,18 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
                 >
                   {metadata.predictionHorizon}
                 </span>
+                {metadata.note && (
+                  <span
+                    className="px-2 py-1 text-xs font-semibold rounded flex items-center gap-1"
+                    style={{
+                      backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                      color: '#f59e0b',
+                    }}
+                    title={metadata.note}
+                  >
+                    ⚠️ {metadata.note}
+                  </span>
+                )}
               </div>
             </div>
             <button

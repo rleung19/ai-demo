@@ -44,27 +44,27 @@
 - [x] 3.12 Test pipeline end-to-end (data → model → predictions) - test script created
 
 ## 4. Backend API Development
-- [ ] 4.1 Set up Next.js API routes structure
-- [ ] 4.2 Implement ADB connection utilities with connection pooling
-- [ ] 4.3 Create health check endpoint (`GET /api/health`)
-- [ ] 4.4 Create API endpoint: `GET /api/kpi/churn/summary` (at-risk count, avg risk, LTV at risk)
-- [ ] 4.5 Create API endpoint: `GET /api/kpi/churn/cohorts` (cohort breakdown with risk scores)
-- [ ] 4.6 Create API endpoint: `GET /api/kpi/churn/metrics` (model confidence, last update)
-- [ ] 4.7 Create API endpoint: `GET /api/kpi/churn/chart-data` (time series data for charts)
-- [ ] 4.8 Implement request validation and input sanitization
-- [ ] 4.9 Implement error handling and logging
+- [x] 4.1 Set up Next.js API routes structure
+- [x] 4.2 Implement ADB connection utilities with connection pooling
+- [x] 4.3 Create health check endpoint (`GET /api/health`)
+- [x] 4.4 Create API endpoint: `GET /api/kpi/churn/summary` (at-risk count, avg risk, LTV at risk)
+- [x] 4.5 Create API endpoint: `GET /api/kpi/churn/cohorts` (cohort breakdown with risk scores)
+- [x] 4.6 Create API endpoint: `GET /api/kpi/churn/metrics` (model confidence, last update)
+- [x] 4.7 Create API endpoint: `GET /api/kpi/churn/chart-data` (time series data for charts)
+- [x] 4.8 Implement request validation and input sanitization
+- [x] 4.9 Implement error handling and logging
 - [ ] 4.10 Add API response caching (optional, for performance)
 - [ ] 4.11 Create API documentation (OpenAPI/Swagger or markdown)
 
 ## 5. Frontend Integration
-- [ ] 5.1 Create API client utility (`app/lib/api/churn-api.ts`)
-- [ ] 5.2 Update `app/data/kpis/index.ts` to fetch from API with fallback to static data
-- [ ] 5.3 Update KPI #1 card to use real-time data
-- [ ] 5.4 Update KPI #1 detail modal to use API data
-- [ ] 5.5 Add loading states and error handling
-- [ ] 5.6 Add retry logic for failed API calls
-- [ ] 5.7 Implement request debouncing for chart data
-- [ ] 5.8 Add visual indicator when using fallback data
+- [x] 5.1 Create API client utility (`app/lib/api/churn-api.ts`)
+- [x] 5.2 Update `app/data/kpis/index.ts` to fetch from API with fallback to static data
+- [x] 5.3 Update KPI #1 card to use real-time data
+- [x] 5.4 Update KPI #1 detail modal to use API data
+- [x] 5.5 Add loading states and error handling
+- [x] 5.6 Add retry logic for failed API calls
+- [ ] 5.7 Implement request debouncing for chart data (optional optimization)
+- [x] 5.8 Add visual indicator when using fallback data
 - [ ] 5.9 Test API integration with backend
 
 ## 6. Testing & Validation
