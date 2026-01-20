@@ -1,8 +1,20 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { KPIDetailData } from '@/app/lib/types/kpi';
 import ChartWrapper from '../charts/chart-wrapper';
+
+// Cohort definitions for tooltips
+const cohortDefinitions: Record<string, string> = {
+  VIP: 'High-value customers with lifetime value over $5,000 or loyalty card membership. These are premium customers who represent significant revenue.',
+  Regular: 'Active customers who have made at least 2 purchases, are active within the last 90 days, and regularly log in. These are engaged, stable customers.',
+  New: 'Recently acquired customers who have been members for less than 1 year. These customers are still in the onboarding phase.',
+  Dormant: 'Inactive customers who have not made a purchase in over 90 days or have not logged in. These customers are at high risk of churn.',
+  Other: 'Customers who do not fit into the other defined segments.',
+};
+
+// Impact score definition
+const impactScoreDefinition = 'Impact Score represents the average churn probability (0-100%) for customers affected by this risk factor. A higher score means customers with this factor have a higher likelihood of churning.';
 
 interface KPIDetailModalProps {
   isOpen: boolean;
@@ -29,7 +41,27 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen || !kpiData) return null;
+  if (!isOpen) return null;
+
+  // Show loading state if data is not available
+  if (!kpiData) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-black/50">
+        <div
+          className="rounded-2xl p-8 border max-w-md w-full"
+          style={{
+            backgroundColor: 'var(--bg-card)',
+            borderColor: 'var(--border-color)',
+          }}
+        >
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--accent-teal)' }}></div>
+            <p style={{ color: 'var(--text-secondary)' }}>Loading KPI data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const { metadata, metrics, actions, impact, alert, cohorts, insight, chartData, chartOptions } =
     kpiData;
@@ -89,7 +121,7 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
               <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
                 {metadata.predictionHorizon} horizon • {metadata.owners.join(' / ')}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {metadata.owners.map((owner) => (
                   <span
                     key={owner}
@@ -111,6 +143,18 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
                 >
                   {metadata.predictionHorizon}
                 </span>
+                {metadata.note && (
+                  <span
+                    className="px-2 py-1 text-xs font-semibold rounded flex items-center gap-1"
+                    style={{
+                      backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                      color: '#f59e0b',
+                    }}
+                    title={metadata.note}
+                  >
+                    ⚠️ {metadata.note}
+                  </span>
+                )}
               </div>
             </div>
             <button
@@ -247,23 +291,29 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
                 Segment Breakdown
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {cohorts.map((cohort, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-xl p-5 border"
-                    style={{
-                      backgroundColor: 'var(--bg-card)',
-                      borderColor:
-                        cohort.riskLevel === 'high'
-                          ? 'rgba(244, 63, 94, 0.3)'
-                          : cohort.riskLevel === 'medium'
-                            ? 'rgba(245, 158, 11, 0.3)'
-                            : 'rgba(16, 185, 129, 0.3)',
-                    }}
-                  >
-                    <div className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
-                      {cohort.name}
-                    </div>
+                {cohorts.map((cohort, idx) => {
+                  // Extract base cohort name (remove " Customers" suffix if present)
+                  const baseCohortName = cohort.name.replace(' Customers', '').trim();
+                  const definition = cohortDefinitions[baseCohortName] || cohortDefinitions[cohort.name] || 'Customer segment definition not available.';
+                  return (
+                    <div
+                      key={idx}
+                      className="rounded-xl p-5 border relative group cursor-help"
+                      style={{
+                        backgroundColor: 'var(--bg-card)',
+                        borderColor:
+                          cohort.riskLevel === 'high'
+                            ? 'rgba(244, 63, 94, 0.3)'
+                            : cohort.riskLevel === 'medium'
+                              ? 'rgba(245, 158, 11, 0.3)'
+                              : 'rgba(16, 185, 129, 0.3)',
+                      }}
+                      title={definition}
+                    >
+                      <div className="text-xs mb-2 flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                        {cohort.name}
+                        <span className="text-[10px] opacity-60" title={definition}>ℹ️</span>
+                      </div>
                     <div
                       className="text-2xl font-bold font-mono mb-1"
                       style={{
@@ -277,20 +327,24 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
                     >
                       {cohort.value}
                     </div>
-                    <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    <div 
+                      className="text-xs whitespace-pre-line" 
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
                       {cohort.label}
                     </div>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* Data Table */}
-          {kpiData.tableData && kpiData.tableData.length > 0 && (
+          {/* Top Churn Risk Factors Table */}
+          {kpiData.tableData && kpiData.tableData.length > 0 && metadata.id === 1 && (
             <div className="mb-6">
               <h3 className="text-sm uppercase font-semibold mb-4 tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                Detailed Data
+                Top Churn Risk Factors
               </h3>
               <div
                 className="overflow-x-auto rounded-xl border"
@@ -302,42 +356,86 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
                 <table className="w-full text-sm">
                   <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
                     <tr>
-                      {Object.keys(kpiData.tableData[0]).map((key) => (
-                        <th
-                          key={key}
-                          className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
-                          style={{ color: 'var(--text-secondary)' }}
-                        >
-                          {key
-                            .replace(/([A-Z])/g, ' $1')
-                            .trim()
-                            .replace(/^\w/, (c) => c.toUpperCase())}
-                        </th>
-                      ))}
+                      <th
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        RISK FACTOR
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide cursor-help relative group"
+                        style={{ color: 'var(--text-secondary)' }}
+                        title={impactScoreDefinition}
+                      >
+                        <div className="flex items-center gap-1">
+                          IMPACT SCORE
+                          <span className="text-[10px] opacity-60" title={impactScoreDefinition}>ℹ️</span>
+                        </div>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        AFFECTED CUSTOMERS
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        PRIMARY SEGMENT
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {kpiData.tableData.map((row: any, idx: number) => (
-                      <tr
-                        key={idx}
-                        className="border-t transition-colors"
-                        style={{
-                          borderColor: 'var(--border-color)',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        {Object.values(row).map((value: any, cellIdx: number) => (
-                          <td key={cellIdx} className="px-4 py-3" style={{ color: 'var(--text-primary)' }}>
-                            {String(value)}
+                    {kpiData.tableData.map((row: any, idx: number) => {
+                      // Parse impact score to determine color
+                      const impactScore = parseFloat(String(row.impactScore || row.impact_score || '0').replace('%', ''));
+                      let impactColor = '#10b981'; // green (low)
+                      if (impactScore >= 70) {
+                        impactColor = '#f43f5e'; // red (high)
+                      } else if (impactScore >= 50) {
+                        impactColor = '#f59e0b'; // orange (medium)
+                      }
+
+                      return (
+                        <tr
+                          key={idx}
+                          className="border-t transition-colors"
+                          style={{
+                            borderColor: 'var(--border-color)',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <td className="px-4 py-3" style={{ color: 'var(--text-primary)' }}>
+                            {row.riskFactor || row.risk_factor || 'N/A'}
                           </td>
-                        ))}
-                      </tr>
-                    ))}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: impactColor }}
+                              />
+                              <span style={{ color: 'var(--text-primary)' }}>
+                                {row.impactScore || row.impact_score || 'N/A'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3" style={{ color: 'var(--text-primary)' }}>
+                            {typeof row.affectedCustomers === 'number'
+                              ? row.affectedCustomers.toLocaleString()
+                              : row.affectedCustomers || row.affected_customers || 'N/A'}
+                          </td>
+                          <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
+                            {row.primarySegment || row.primary_segment || 'N/A'}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

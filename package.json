@@ -4,25 +4,39 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:oracle": "./scripts/start-nextjs.sh",
+    "dev:all": "./scripts/start-all.sh",
+    "server:dev": "tsx watch server/index.ts",
+    "server:build": "tsc --project tsconfig.server.json",
+    "server:start": "node dist/server/index.js",
     "build": "next build",
     "start": "next start",
+    "start:oracle": "TNS_ADMIN=${ADB_WALLET_PATH:-${TNS_ADMIN}} next start",
     "lint": "eslint"
   },
   "dependencies": {
     "chart.js": "^4.5.1",
     "next": "16.1.1",
+    "oracledb": "^6.0.0",
     "react": "19.2.3",
     "react-chartjs-2": "^5.3.1",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "express": "^5.2.1",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
