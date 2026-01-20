@@ -5,12 +5,20 @@
 
 import express from 'express';
 import { executeQuery } from '../../lib/db/oracle';
+import { getCache, setCache } from '../../lib/cache';
 import { handleDatabaseError, handleNotFoundError } from '../../lib/api/express-errors';
 
 const router = express.Router();
 
+const CACHE_KEY = 'churn:metrics';
+const CACHE_TTL_MILLISECONDS = 60_000; // 60 seconds
+
 router.get('/', async (req, res) => {
   try {
+    const cached = getCache<any>(CACHE_KEY);
+    if (cached) {
+      return res.json(cached);
+    }
     // Get latest model info from MODEL_REGISTRY
     const modelQuery = `
       SELECT 
@@ -79,6 +87,7 @@ router.get('/', async (req, res) => {
       status: model.STATUS,
     };
 
+    setCache(CACHE_KEY, response, CACHE_TTL_MILLISECONDS);
     res.json(response);
   } catch (error: any) {
     if (error.message?.includes('ORA-') || error.message?.includes('database')) {

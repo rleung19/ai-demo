@@ -1,0 +1,37 @@
+{
+  "model_name": "XGBoost",
+  "model_path": "/Users/rleung/Projects/aiworkshop2026/ai-demo/models/churn_model_xgboost_20260120_224151.pkl",
+  "feature_cols": [
+    "AGE",
+    "GENDER_CODE",
+    "SIGNUP_QUARTER_CODE",
+    "MEMBERSHIP_YEARS",
+    "LOGIN_FREQUENCY",
+    "SESSION_DURATION_AVG",
+    "PAGES_PER_SESSION",
+    "EMAIL_OPEN_RATE",
+    "SOCIAL_MEDIA_ENGAGEMENT_SCORE",
+    "MOBILE_APP_USAGE",
+    "TOTAL_PURCHASES",
+    "AVERAGE_ORDER_VALUE",
+    "DAYS_SINCE_LAST_PURCHASE",
+    "LIFETIME_VALUE",
+    "CART_ABANDONMENT_RATE",
+    "WISHLIST_ITEMS",
+    "CUSTOMER_SERVICE_CALLS",
+    "RETURNS_RATE",
+    "PRODUCT_REVIEWS_WRITTEN",
+    "DISCOUNT_USAGE_RATE",
+    "PAYMENT_METHOD_DIVERSITY",
+    "CREDIT_BALANCE"
+  ],
+  "timestamp": "20260120_224151",
+  "performance": {
+    "auc": 0.928529527688386,
+    "accuracy": 0.9226666666666666,
+    "precision": 0.9182417582417582,
+    "recall": 0.8037706810311658,
+    "f1": 0.8572014772260976
+  },
+  "optimal_threshold": 0.4200000000000001
+}

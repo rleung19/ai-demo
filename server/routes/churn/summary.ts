@@ -5,12 +5,21 @@
 
 import express from 'express';
 import { executeQuery } from '../../lib/db/oracle';
+import { getCache, setCache } from '../../lib/cache';
 import { handleDatabaseError } from '../../lib/api/express-errors';
 
 const router = express.Router();
 
+const CACHE_KEY = 'churn:summary';
+const CACHE_TTL_MS = 60_000; // 60 seconds
+
 router.get('/', async (req, res) => {
   try {
+    const cached = getCache<any>(CACHE_KEY);
+    if (cached) {
+      return res.json(cached);
+    }
+
     // Get summary statistics from CHURN_PREDICTIONS
     const summaryQuery = `
       SELECT 
@@ -78,6 +87,7 @@ router.get('/', async (req, res) => {
       modelVersion: modelInfo?.MODEL_VERSION || null,
     };
 
+    setCache(CACHE_KEY, response, CACHE_TTL_MS);
     res.json(response);
   } catch (error: any) {
     if (error.message?.includes('ORA-') || error.message?.includes('database')) {

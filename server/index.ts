@@ -13,6 +13,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import swaggerUi from 'swagger-ui-express';
 
 // Load environment variables
 const envFile = path.join(__dirname, '..', '.env');
@@ -25,6 +26,7 @@ import churnCohortsRoutes from './routes/churn/cohorts';
 import churnMetricsRoutes from './routes/churn/metrics';
 import churnChartDataRoutes from './routes/churn/chart-data';
 import churnRiskFactorsRoutes from './routes/churn/risk-factors';
+import { churnOpenApiSpec } from './openapi';
 
 // Import database utilities
 import { initializePool, closePool } from './lib/db/oracle';
@@ -47,6 +49,12 @@ app.use(express.json());
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
   next();
+});
+
+// Swagger UI - API documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(churnOpenApiSpec));
+app.get('/openapi.json', (req, res) => {
+  res.json(churnOpenApiSpec);
 });
 
 // API Routes

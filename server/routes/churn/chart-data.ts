@@ -7,8 +7,11 @@ import express from 'express';
 import { executeQuery } from '../../lib/db/oracle';
 import { validateQueryParams } from '../../lib/api/validation';
 import { handleValidationError, handleDatabaseError } from '../../lib/api/express-errors';
+import { getCache, setCache } from '../../lib/cache';
 
 const router = express.Router();
+
+const CACHE_TTL_MILLISECONDS = 60_000; // 60 seconds
 
 router.get('/', async (req, res) => {
   try {
@@ -26,6 +29,12 @@ router.get('/', async (req, res) => {
     }
 
     const chartType = (validation.data?.type as string) || 'distribution';
+    const cacheKey = `churn:chart-data:${chartType}`;
+
+    const cached = getCache<any>(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
 
     if (chartType === 'distribution') {
       // Risk distribution chart data
@@ -78,17 +87,23 @@ router.get('/', async (req, res) => {
         atRiskCount: row.AT_RISK_COUNT,
       }));
 
-      return res.json({
+      const response = {
         chartType: 'distribution',
         data,
-      });
+      };
+
+      setCache(cacheKey, response, CACHE_TTL_MILLISECONDS);
+      return res.json(response);
     } else if (chartType === 'cohort-trend') {
       // Placeholder for future: cohort trends over time
-      return res.json({
+      const response = {
         chartType: 'cohort-trend',
         message: 'Historical trend data not yet available',
         data: [],
-      });
+      };
+
+      setCache(cacheKey, response, CACHE_TTL_MILLISECONDS);
+      return res.json(response);
     } else {
       return handleValidationError([`Chart type '${chartType}' is not supported. Use 'distribution' or 'cohort-trend'.`], res);
     }

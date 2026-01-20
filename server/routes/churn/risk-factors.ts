@@ -8,14 +8,22 @@
 import express from 'express';
 import { executeQuery } from '../../lib/db/oracle';
 import { handleDatabaseError } from '../../lib/api/express-errors';
+import { getCache, setCache } from '../../lib/cache';
 
 const router = express.Router();
+
+const CACHE_KEY = 'churn:risk-factors';
+const CACHE_TTL_MILLISECONDS = 300_000; // 5 minutes – more expensive query
 
 /**
  * Calculate risk factors from database
  */
 router.get('/', async (req, res) => {
   try {
+    const cached = getCache<any>(CACHE_KEY);
+    if (cached) {
+      return res.json(cached);
+    }
     // Common cohort assignment CTE
     const cohortCTE = `
       WITH cohort_assignments AS (
@@ -260,10 +268,13 @@ router.get('/', async (req, res) => {
         return scoreB - scoreA;
       });
 
-    res.json({
+    const response = {
       riskFactors,
       lastUpdate: new Date().toISOString(),
-    });
+    };
+
+    setCache(CACHE_KEY, response, CACHE_TTL_MILLISECONDS);
+    res.json(response);
   } catch (error: any) {
     if (error.message?.includes('ORA-') || error.message?.includes('database')) {
       return handleDatabaseError(error, res);

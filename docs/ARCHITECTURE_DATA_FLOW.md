@@ -145,11 +145,11 @@ See [API_SERVER_SWITCH.md](API_SERVER_SWITCH.md) for detailed instructions.
 
 ## API Request Timeouts
 
-**Default Timeout: 10 seconds (10000ms)**
+**Default Timeout: 15 seconds (15000ms)**
 
-All API calls use a 10-second timeout to accommodate database queries:
-- KPI API calls: 10 seconds timeout, 3 retries (total possible wait: ~40 seconds)
-- Health check: 10 seconds timeout, 1 retry (total possible wait: ~20 seconds)
+All API calls use a 15-second timeout to accommodate database queries:
+- **KPI API calls**: 15s timeout, 3 retries (worst‑case wait ~1 minute if the DB is very slow)
+- **Health check**: 15s timeout, 1 retry (worst‑case wait ~30s)
 
 The timeout is configured in `app/lib/api/churn-api.ts`:
 ```typescript
@@ -157,11 +157,23 @@ async function fetchWithRetry(
   url: string,
   options: RequestInit = {},
   retries = 3,
-  timeout = 10000  // 10 seconds for database queries
+  timeout = 15000 // 15 seconds for database queries
 )
 ```
 
-**Why 10 seconds?**
-- Oracle database queries can take 3-5 seconds
-- Network latency adds additional time
-- 5 seconds was too short, causing premature timeouts and retries
+**Why 15 seconds?**
+- Oracle database queries can take close to 10s under load
+- Network latency adds some variance
+- Previous 5s timeout caused premature client‑side aborts and duplicate retry calls
+
+## OCI Deployment Notes (WIP)
+
+The full OCI deployment discussion is documented separately in:
+
+- [`OCI_DEPLOYMENT_NOTES.md`](./OCI_DEPLOYMENT_NOTES.md)
+
+That document covers:
+- The proposed deployment model on an OCI VM with Docker and Caddy
+- How this app talks to Oracle ADB from a container
+- The split between local development (Mac) and the OCI VM
+- Open questions to resolve before implementing the deployment

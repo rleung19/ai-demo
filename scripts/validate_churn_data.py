@@ -86,44 +86,43 @@ def get_connection():
     return oracledb.connect(user=username, password=password, dsn=connection_string)
 
 def validate_row_counts(connection):
-    """Validate row counts match expected values"""
+    """
+    Validate row counts for key tables.
+
+    NOTE: We no longer enforce hard-coded expected counts, because the number
+    of rows can legitimately change when we improve the ADMIN.USERS →
+    USER_PROFILES mapping. Instead, this check reports the current counts for
+    visibility, while the strict invariants are enforced in the mapping and
+    data quality checks.
+    """
     print("\n" + "=" * 60)
     print("1. Row Count Validation")
     print("=" * 60)
     
     cursor = connection.cursor()
-    results = {}
-    
-    # Expected row counts
-    expected = {
-        'CHURN_DATASET_TRAINING': 45858,
-        'USER_PROFILES': 4142,
-    }
-    
-    for table, expected_count in expected.items():
+    try:
+        cursor.execute("SELECT COUNT(*) FROM OML.CHURN_DATASET_TRAINING")
+        training_count = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM OML.USER_PROFILES")
+        profiles_count = cursor.fetchone()[0]
         try:
-            cursor.execute(f"SELECT COUNT(*) FROM OML.{table}")
-            actual_count = cursor.fetchone()[0]
-            results[table] = {
-                'expected': expected_count,
-                'actual': actual_count,
-                'match': actual_count == expected_count
-            }
-            
-            status = "✓ PASS" if actual_count == expected_count else "❌ FAIL"
-            print(f"  {table}:")
-            print(f"    Expected: {expected_count:,}")
-            print(f"    Actual:   {actual_count:,}")
-            print(f"    Status:   {status}")
-            if actual_count != expected_count:
-                diff = actual_count - expected_count
-                print(f"    Difference: {diff:+,}")
-        except Exception as e:
-            print(f"  {table}: ❌ ERROR - {e}")
-            results[table] = {'error': str(e)}
-    
-    cursor.close()
-    return all(r.get('match', False) for r in results.values() if 'error' not in r)
+            cursor.execute("SELECT COUNT(*) FROM ADMIN.USERS")
+            admin_users_count = cursor.fetchone()[0]
+        except Exception:
+            admin_users_count = None
+    finally:
+        cursor.close()
+
+    print(f"  CHURN_DATASET_TRAINING: {training_count:,} rows")
+    print(f"  USER_PROFILES:          {profiles_count:,} rows")
+    if admin_users_count is not None:
+        print(f"  ADMIN.USERS:            {admin_users_count:,} rows")
+    else:
+        print("  ADMIN.USERS:            (not accessible from this connection)")
+
+    # Always return True here; hard correctness is enforced by mapping and
+    # data quality checks rather than fixed absolute counts.
+    return True
 
 def validate_data_types(connection):
     """Validate data types match schema"""
@@ -316,6 +315,7 @@ def validate_user_id_mapping(connection):
     print("=" * 60)
     
     cursor = connection.cursor()
+    all_valid = True
     
     # Check if USER_PROFILES.USER_ID matches ADMIN.USERS.ID
     try:
@@ -329,15 +329,35 @@ def validate_user_id_mapping(connection):
         unmapped_count = cursor.fetchone()[0]
         
         if unmapped_count == 0:
-            print(f"  ✓ All USER_PROFILES.USER_ID mapped to ADMIN.USERS.ID")
+            print("  ✓ All USER_PROFILES.USER_ID mapped to ADMIN.USERS.ID")
         else:
-            print(f"  ⚠️  {unmapped_count} USER_IDs not found in ADMIN.USERS")
-            print(f"     (This may be expected if using placeholder IDs)")
+            print(f"  ❌ {unmapped_count} USER_PROFILES.USER_ID values not found in ADMIN.USERS.ID")
+            all_valid = False
     except Exception as e:
-        print(f"  ⚠️  Could not validate USER_ID mapping: {e}")
-        print(f"     (ADMIN.USERS table may not be accessible)")
+        print(f"  ⚠️  Could not validate USER_PROFILES → ADMIN.USERS mapping: {e}")
+        print("     (ADMIN.USERS table may not be accessible)")
     
-    # Check USER_ID format (should be UUIDs for USER_PROFILES)
+    # Check that every ADMIN.USERS.ID has a corresponding USER_PROFILES row
+    try:
+        cursor.execute("""
+            SELECT COUNT(*) 
+            FROM ADMIN.USERS u
+            WHERE NOT EXISTS (
+                SELECT 1 FROM OML.USER_PROFILES up WHERE up.USER_ID = u.ID
+            )
+        """)
+        missing_profiles = cursor.fetchone()[0]
+        
+        if missing_profiles == 0:
+            print("  ✓ All ADMIN.USERS.ID have matching USER_PROFILES.USER_ID")
+        else:
+            print(f"  ❌ {missing_profiles} ADMIN.USERS.ID values have no matching USER_PROFILES.USER_ID")
+            all_valid = False
+    except Exception as e:
+        print(f"  ⚠️  Could not validate ADMIN.USERS → USER_PROFILES mapping: {e}")
+        print("     (ADMIN.USERS table may not be accessible)")
+    
+    # Check USER_ID format (should ideally be UUIDs for USER_PROFILES)
     try:
         cursor.execute("""
             SELECT COUNT(*) 
@@ -346,14 +366,14 @@ def validate_user_id_mapping(connection):
         """)
         invalid_format_count = cursor.fetchone()[0]
         if invalid_format_count == 0:
-            print(f"  ✓ All USER_PROFILES.USER_ID are in UUID format")
+            print("  ✓ All USER_PROFILES.USER_ID are in UUID format")
         else:
             print(f"  ⚠️  {invalid_format_count} USER_IDs not in UUID format")
     except Exception as e:
         print(f"  ⚠️  Could not validate USER_ID format: {e}")
     
     cursor.close()
-    return True
+    return all_valid
 
 def main():
     """Main validation function"""

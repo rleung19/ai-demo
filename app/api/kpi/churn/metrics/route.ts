@@ -13,12 +13,20 @@ import { NextResponse } from 'next/server';
 import { executeQuery } from '@/app/lib/db/oracle';
 import { handleDatabaseError, handleNotFoundError } from '@/app/lib/api/errors';
 import { logRequest } from '@/app/lib/api/request-logger';
+import { getCache, setCache } from '@/app/lib/api/cache';
 
 export async function GET() {
   const startTime = Date.now();
   const path = '/api/kpi/churn/metrics';
+  const cacheKey = 'churn:metrics';
+  const CACHE_TTL_MS = 60_000; // 60 seconds
   
   try {
+    const cached = getCache<any>(cacheKey);
+    if (cached) {
+      logRequest('GET', path, 200, startTime);
+      return NextResponse.json(cached);
+    }
     // Get latest model info from MODEL_REGISTRY
     const modelQuery = `
       SELECT 
@@ -87,6 +95,7 @@ export async function GET() {
       status: model.STATUS,
     };
 
+    setCache(cacheKey, response, CACHE_TTL_MS);
     logRequest('GET', path, 200, startTime);
     return NextResponse.json(response);
   } catch (error: any) {

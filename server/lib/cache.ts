@@ -1,0 +1,44 @@
+/**
+ * Simple in-memory cache for Express API responses.
+ *
+ * - Per-process, per-instance (sufficient for demo / single-VM deployment)
+ * - Time-based eviction using a TTL in milliseconds
+ * - Intended for read-heavy, infrequently changing endpoints
+ */
+
+type CacheEntry<T> = {
+  value: T;
+  expiresAt: number;
+};
+
+const cache = new Map<string, CacheEntry<unknown>>();
+
+export function getCache<T>(key: string): T | null {
+  const entry = cache.get(key) as CacheEntry<T> | undefined;
+  if (!entry) {
+    return null;
+  }
+
+  if (Date.now() > entry.expiresAt) {
+    cache.delete(key);
+    return null;
+  }
+
+  return entry.value;
+}
+
+export function setCache<T>(key: string, value: T, ttlMs: number): void {
+  cache.set(key, {
+    value,
+    expiresAt: Date.now() + ttlMs,
+  });
+}
+
+export function clearCache(key?: string): void {
+  if (key) {
+    cache.delete(key);
+  } else {
+    cache.clear();
+  }
+}
+

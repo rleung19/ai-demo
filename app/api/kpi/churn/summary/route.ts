@@ -13,12 +13,20 @@ import { NextResponse } from 'next/server';
 import { executeQuery } from '@/app/lib/db/oracle';
 import { handleDatabaseError } from '@/app/lib/api/errors';
 import { logRequest } from '@/app/lib/api/request-logger';
+import { getCache, setCache } from '@/app/lib/api/cache';
 
 export async function GET() {
   const startTime = Date.now();
   const path = '/api/kpi/churn/summary';
+  const cacheKey = 'churn:summary';
+  const CACHE_TTL_MS = 60_000; // 60 seconds
   
   try {
+    const cached = getCache<any>(cacheKey);
+    if (cached) {
+      logRequest('GET', path, 200, startTime);
+      return NextResponse.json(cached);
+    }
     // Get summary statistics from CHURN_PREDICTIONS
     const summaryQuery = `
       SELECT 
@@ -86,6 +94,7 @@ export async function GET() {
       modelVersion: modelInfo?.MODEL_VERSION || null,
     };
 
+    setCache(cacheKey, response, CACHE_TTL_MS);
     logRequest('GET', path, 200, startTime);
     return NextResponse.json(response);
   } catch (error: any) {

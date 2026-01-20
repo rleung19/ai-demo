@@ -9,12 +9,20 @@ import { NextResponse } from 'next/server';
 import { executeQuery } from '@/app/lib/db/oracle';
 import { handleDatabaseError } from '@/app/lib/api/errors';
 import { logRequest } from '@/app/lib/api/request-logger';
+import { getCache, setCache } from '@/app/lib/api/cache';
 
 export async function GET() {
   const startTime = Date.now();
   const path = '/api/kpi/churn/risk-factors';
+  const cacheKey = 'churn:risk-factors';
+  const CACHE_TTL_MS = 300_000; // 5 minutes – expensive aggregation
   
   try {
+    const cached = getCache<any>(cacheKey);
+    if (cached) {
+      logRequest('GET', path, 200, startTime);
+      return NextResponse.json(cached);
+    }
     // Common cohort assignment CTE
     const cohortCTE = `
       WITH cohort_assignments AS (
@@ -253,16 +261,21 @@ export async function GET() {
         primarySegment: row!.PRIMARY_SEGMENT || 'All segments',
       }))
       .sort((a, b) => {
+      .sort((a, b) => {
         // Sort by impact score (highest first)
         const scoreA = parseFloat(a.impactScore.replace('%', ''));
         const scoreB = parseFloat(b.impactScore.replace('%', ''));
         return scoreB - scoreA;
       });
 
-    return NextResponse.json({
+    const response = {
       riskFactors,
       lastUpdate: new Date().toISOString(),
-    });
+    };
+
+    setCache(cacheKey, response, CACHE_TTL_MS);
+    logRequest('GET', path, 200, startTime);
+    return NextResponse.json(response);
   } catch (error: any) {
     if (error.message?.includes('ORA-') || error.message?.includes('database')) {
       return handleDatabaseError(error);

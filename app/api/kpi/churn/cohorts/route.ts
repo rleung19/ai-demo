@@ -10,12 +10,20 @@ import { NextResponse } from 'next/server';
 import { executeQuery } from '@/app/lib/db/oracle';
 import { handleDatabaseError } from '@/app/lib/api/errors';
 import { logRequest } from '@/app/lib/api/request-logger';
+import { getCache, setCache } from '@/app/lib/api/cache';
 
 export async function GET() {
   const startTime = Date.now();
   const path = '/api/kpi/churn/cohorts';
+  const cacheKey = 'churn:cohorts';
+  const CACHE_TTL_MS = 60_000; // 60 seconds
   
   try {
+    const cached = getCache<any>(cacheKey);
+    if (cached) {
+      logRequest('GET', path, 200, startTime);
+      return NextResponse.json(cached);
+    }
     // Query to get cohort breakdown with updated VIP definition
     const cohortsQuery = `
       WITH cohort_assignments AS (
@@ -86,8 +94,11 @@ export async function GET() {
       ltvAtRisk: Math.round(row.LTV_AT_RISK * 100) / 100,
     }));
 
+    const response = { cohorts };
+
+    setCache(cacheKey, response, CACHE_TTL_MS);
     logRequest('GET', path, 200, startTime);
-    return NextResponse.json({ cohorts });
+    return NextResponse.json(response);
   } catch (error: any) {
     if (error.message?.includes('ORA-') || error.message?.includes('database')) {
       const errorResponse = handleDatabaseError(error);

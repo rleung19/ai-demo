@@ -54,7 +54,11 @@ Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 
 - [Setup Guide](SETUP.md) - Quick setup instructions
 - [ADB Setup Guide](docs/ADB_SETUP.md) - Detailed Oracle ADB configuration
+- [ML Pipeline Usage](docs/ML_PIPELINE_USAGE.md) - How to train, score, and validate the churn model
+- [Dataset Source & Preparation](docs/DATASET_SOURCE_AND_PREP.md) - Dataset origin and ingestion steps
 - [API Server Switch](docs/API_SERVER_SWITCH.md) - Switch between Next.js API routes and Express server
+- [Churn API Reference](docs/CHURN_API_REFERENCE.md) - REST API endpoints and example responses
+- [OCI Deployment Notes](docs/OCI_DEPLOYMENT_NOTES.md) - WIP notes for deploying on Oracle Cloud Infrastructure
 - [OpenSpec Proposal](openspec/changes/add-churn-model-backend-api/proposal.md) - Churn model backend API proposal
 - [OML Notebooks](oml-notebooks/README.md) - OML notebook documentation
 

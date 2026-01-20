@@ -5,12 +5,20 @@
 
 import express from 'express';
 import { executeQuery } from '../../lib/db/oracle';
+import { getCache, setCache } from '../../lib/cache';
 import { handleDatabaseError } from '../../lib/api/express-errors';
 
 const router = express.Router();
 
+const CACHE_KEY = 'churn:cohorts';
+const CACHE_TTL_MILLISECONDS = 60_000; // 60 seconds
+
 router.get('/', async (req, res) => {
   try {
+    const cached = getCache<any>(CACHE_KEY);
+    if (cached) {
+      return res.json(cached);
+    }
     // Query to get cohort breakdown with updated VIP definition
     const cohortsQuery = `
       WITH cohort_assignments AS (
@@ -81,7 +89,10 @@ router.get('/', async (req, res) => {
       ltvAtRisk: Math.round(row.LTV_AT_RISK * 100) / 100,
     }));
 
-    res.json({ cohorts });
+    const response = { cohorts };
+
+    setCache(CACHE_KEY, response, CACHE_TTL_MILLISECONDS);
+    res.json(response);
   } catch (error: any) {
     if (error.message?.includes('ORA-') || error.message?.includes('database')) {
       return handleDatabaseError(error, res);

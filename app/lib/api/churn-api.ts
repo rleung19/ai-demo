@@ -217,28 +217,54 @@ export async function getChurnMetrics(): Promise<ChurnMetrics | null> {
 
 /**
  * Get chart data for churn visualization
+ *
+ * Simple coalescing: if a request for the same chart type is already in flight,
+ * reuse the existing promise instead of firing a new HTTP request. This is a
+ * lightweight form of request debouncing for chart data.
  */
-export async function getChurnChartData(type: 'distribution' | 'cohort-trend' = 'distribution'): Promise<ChartData | null> {
+let inFlightChartDataPromise: Promise<ChartData | null> | null = null;
+let inFlightChartType: 'distribution' | 'cohort-trend' | null = null;
+
+export async function getChurnChartData(
+  type: 'distribution' | 'cohort-trend' = 'distribution'
+): Promise<ChartData | null> {
   const callId = Math.random().toString(36).substring(7);
   console.log(`[getChurnChartData:${callId}] Called, type=${type}`);
-  try {
-    const response = await fetchWithRetry(
-      `${API_BASE_URL}/api/kpi/churn/chart-data?type=${type}`
-    );
-    
-    if (!response.ok) {
-      const error: ApiError = await response.json();
-      if (error.fallback) {
-        console.warn('API returned fallback data for chart');
-      }
-      return null;
-    }
 
-    return await response.json();
-  } catch (error) {
-    console.error('Failed to fetch churn chart data:', error);
-    return null;
+  if (inFlightChartDataPromise && inFlightChartType === type) {
+    console.log(
+      `[getChurnChartData:${callId}] Reusing in-flight promise for type=${type}`
+    );
+    return inFlightChartDataPromise;
   }
+
+  inFlightChartType = type;
+
+  inFlightChartDataPromise = (async () => {
+    try {
+      const response = await fetchWithRetry(
+        `${API_BASE_URL}/api/kpi/churn/chart-data?type=${type}`
+      );
+
+      if (!response.ok) {
+        const error: ApiError = await response.json();
+        if (error.fallback) {
+          console.warn('API returned fallback data for chart');
+        }
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch churn chart data:', error);
+      return null;
+    } finally {
+      inFlightChartDataPromise = null;
+      inFlightChartType = null;
+    }
+  })();
+
+  return inFlightChartDataPromise;
 }
 
 /**
