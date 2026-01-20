@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import KPIDetailModal from './components/kpi-detail-modal/kpi-detail-modal';
 import KPICard from './components/kpi-card/kpi-card';
 import { getKPIData } from './data/kpis';
@@ -172,6 +172,10 @@ export default function Home() {
   const [kpi1Data, setKpi1Data] = useState<KPIDetailData | null>(null);
   const [isLoadingKPI1, setIsLoadingKPI1] = useState(true);
   const [usingFallbackData, setUsingFallbackData] = useState(false);
+  
+  // Use ref to prevent double calls in StrictMode
+  const hasFetchedKPI1 = useRef(false);
+  const isFetchingKPI1 = useRef(false);
 
   // Theme toggle handler
   useEffect(() => {
@@ -203,44 +207,66 @@ export default function Home() {
   };
 
   // Load KPI #1 data on mount (Task 5.3)
+  // Simple StrictMode-safe guard: per-component refs only
   useEffect(() => {
+    // Prevent duplicate calls in development StrictMode (double-mount)
+    if (hasFetchedKPI1.current || isFetchingKPI1.current) {
+      return;
+    }
+
     let cancelled = false;
-    
+    isFetchingKPI1.current = true;
+
     async function loadKPI1Data() {
       setIsLoadingKPI1(true);
       setKpiError(null);
+
       try {
-        const data = await getKPIData(1);
+        const data = await getKPIData(1, false);
         if (!cancelled) {
           setKpi1Data(data);
           setUsingFallbackData(data?.metadata.note?.includes('fallback') || false);
+          hasFetchedKPI1.current = true;
         }
       } catch (error) {
         if (!cancelled) {
           console.error('Failed to load KPI #1 data:', error);
           setKpiError('Failed to load churn data');
-          // Use fallback data
-          const fallbackData = await getKPIData(1);
-          if (fallbackData) {
-            setKpi1Data(fallbackData);
-            setUsingFallbackData(true);
+          try {
+            const fallbackData = await getKPIData(1);
+            if (fallbackData) {
+              setKpi1Data(fallbackData);
+              setUsingFallbackData(true);
+            }
+          } catch {
+            // Ignore fallback errors
           }
         }
       } finally {
         if (!cancelled) {
           setIsLoadingKPI1(false);
         }
+        isFetchingKPI1.current = false;
       }
     }
-    
+
     loadKPI1Data();
-    
+
     return () => {
       cancelled = true;
     };
   }, []);
 
   const handleKPIClick = async (kpiId: number) => {
+    // For KPI #1, use already-fetched data if available
+    if (kpiId === 1 && kpi1Data) {
+      setKpiData(kpi1Data);
+      setSelectedKPI(kpiId);
+      setIsModalOpen(true);
+      return;
+    }
+    
+    // For other KPIs or if KPI #1 data not available, fetch it
     setIsLoadingKPI(true);
     setKpiError(null);
     try {
@@ -736,12 +762,24 @@ export default function Home() {
                 const realTimeKPI = kpi1Data
                   ? {
                       ...kpi,
-                      primaryMetric: kpi1Data.metrics[0]?.value || kpi.primaryMetric,
+                      primaryMetric:
+                        kpi1Data.metrics[0]?.value != null
+                          ? String(kpi1Data.metrics[0].value)
+                          : kpi.primaryMetric,
                       primaryLabel: kpi1Data.metrics[0]?.label || kpi.primaryLabel,
-                      secondaryMetric: kpi1Data.metrics[1]?.value || kpi.secondaryMetric,
+                      secondaryMetric:
+                        kpi1Data.metrics[1]?.value != null
+                          ? String(kpi1Data.metrics[1].value)
+                          : kpi.secondaryMetric,
                       secondaryLabel: kpi1Data.metrics[1]?.label || kpi.secondaryLabel,
                       confidence: kpi1Data.metadata.confidence || kpi.confidence,
-                      status: (kpi1Data.metrics[0]?.value && parseInt(kpi1Data.metrics[0].value.replace(/,/g, '')) > 1000) ? 'alert' as const : kpi.status,
+                      status: (() => {
+                        const rawValue = kpi1Data.metrics[0]?.value;
+                        if (rawValue == null) return kpi.status;
+                        const strValue = typeof rawValue === 'number' ? rawValue.toString() : rawValue;
+                        const numeric = parseInt(strValue.replace(/,/g, ''), 10);
+                        return Number.isFinite(numeric) && numeric > 1000 ? 'alert' as const : kpi.status;
+                      })(),
                     }
                   : kpi;
 

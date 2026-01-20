@@ -1,8 +1,25 @@
 /**
  * Churn Model API Client
  * Task 5.1: API client utility for fetching churn data from backend
+ *
+ * The frontend can be configured to use either:
+ * 1. Next.js API Routes (same origin, port 3000)
+ * 2. Express Standalone Server (separate server, port 3001)
+ *
+ * Configuration:
+ * - Set NEXT_PUBLIC_API_URL environment variable to override
+ * - Default behavior is controlled by the fallback value below
+ *
+ * Current default: Express server (http://localhost:3001)
+ * To use Next.js API routes: Set NEXT_PUBLIC_API_URL='' or change fallback to ''
+ *
+ * See docs/API_SERVER_SWITCH.md for detailed switching instructions.
  */
 
+// API Base URL Configuration
+// - Empty string ('') = Use Next.js API routes (same origin)
+// - URL (e.g., 'http://localhost:3001') = Use Express standalone server
+// - Can be overridden via NEXT_PUBLIC_API_URL environment variable
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export interface ChurnSummary {
@@ -56,6 +73,18 @@ export interface ChartData {
   data: ChartDataPoint[];
 }
 
+export interface RiskFactor {
+  riskFactor: string;
+  impactScore: string;
+  affectedCustomers: number;
+  primarySegment: string;
+}
+
+export interface RiskFactorsResponse {
+  riskFactors: RiskFactor[];
+  lastUpdate: string;
+}
+
 export interface ApiError {
   error: string;
   message: string;
@@ -63,20 +92,20 @@ export interface ApiError {
 }
 
 /**
- * Fetch with timeout and retry logic
- */
-/**
- * Fetch with timeout and retry logic
- * Task 5.6: Retry logic for failed API calls
+ * Fetch with timeout and retry logic.
+ *
+ * Now that we've identified browser-side timeouts as the main source of
+ * duplicate calls, this helper is intentionally simple – no global
+ * deduplication or cross-request state, just retries and a per-call timeout.
  */
 async function fetchWithRetry(
   url: string,
   options: RequestInit = {},
   retries = 3,
-  timeout = 5000
+  timeout = 15000 // 15 seconds to comfortably cover DB latency
 ): Promise<Response> {
   let lastError: Error | null = null;
-  
+
   for (let attempt = 0; attempt <= retries; attempt++) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -87,26 +116,29 @@ async function fetchWithRetry(
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
-      
+
       // Retry on 5xx errors
       if (response.status >= 500 && attempt < retries) {
         await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
         continue;
       }
-      
+
       return response;
     } catch (error: any) {
       clearTimeout(timeoutId);
       lastError = error;
-      
+
       // Retry on timeout or network error
-      if (attempt < retries && (error.name === 'AbortError' || error.name === 'TypeError')) {
+      if (
+        attempt < retries &&
+        (error.name === 'AbortError' || error.name === 'TypeError')
+      ) {
         await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
         continue;
       }
     }
   }
-  
+
   throw lastError || new Error('Failed to fetch after retries');
 }
 
@@ -114,6 +146,8 @@ async function fetchWithRetry(
  * Get churn summary statistics
  */
 export async function getChurnSummary(): Promise<ChurnSummary | null> {
+  const callId = Math.random().toString(36).substring(7);
+  console.log(`[getChurnSummary:${callId}] Called`);
   try {
     const response = await fetchWithRetry(`${API_BASE_URL}/api/kpi/churn/summary`);
     
@@ -136,6 +170,8 @@ export async function getChurnSummary(): Promise<ChurnSummary | null> {
  * Get churn breakdown by cohorts
  */
 export async function getChurnCohorts(): Promise<ChurnCohort[] | null> {
+  const callId = Math.random().toString(36).substring(7);
+  console.log(`[getChurnCohorts:${callId}] Called`);
   try {
     const response = await fetchWithRetry(`${API_BASE_URL}/api/kpi/churn/cohorts`);
     
@@ -159,6 +195,8 @@ export async function getChurnCohorts(): Promise<ChurnCohort[] | null> {
  * Get model metrics and confidence
  */
 export async function getChurnMetrics(): Promise<ChurnMetrics | null> {
+  const callId = Math.random().toString(36).substring(7);
+  console.log(`[getChurnMetrics:${callId}] Called`);
   try {
     const response = await fetchWithRetry(`${API_BASE_URL}/api/kpi/churn/metrics`);
     
@@ -181,6 +219,8 @@ export async function getChurnMetrics(): Promise<ChurnMetrics | null> {
  * Get chart data for churn visualization
  */
 export async function getChurnChartData(type: 'distribution' | 'cohort-trend' = 'distribution'): Promise<ChartData | null> {
+  const callId = Math.random().toString(36).substring(7);
+  console.log(`[getChurnChartData:${callId}] Called, type=${type}`);
   try {
     const response = await fetchWithRetry(
       `${API_BASE_URL}/api/kpi/churn/chart-data?type=${type}`
@@ -202,11 +242,35 @@ export async function getChurnChartData(type: 'distribution' | 'cohort-trend' = 
 }
 
 /**
+ * Get churn risk factors
+ */
+export async function getChurnRiskFactors(): Promise<RiskFactorsResponse | null> {
+  const callId = Math.random().toString(36).substring(7);
+  console.log(`[getChurnRiskFactors:${callId}] Called`);
+  try {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/kpi/churn/risk-factors`);
+    
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      if (error.fallback) {
+        console.warn('API returned fallback data for risk factors');
+      }
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch churn risk factors:', error);
+    return null;
+  }
+}
+
+/**
  * Check API health
  */
 export async function checkApiHealth(): Promise<boolean> {
   try {
-    const response = await fetchWithRetry(`${API_BASE_URL}/api/health`, {}, 1, 3000);
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/health`, {}, 1, 10000);  // Increased to 10 seconds
     if (!response.ok) return false;
     const health = await response.json();
     return health.status === 'healthy' && health.services?.database === 'connected';

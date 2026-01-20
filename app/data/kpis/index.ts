@@ -16,6 +16,7 @@ import {
   getChurnCohorts,
   getChurnMetrics,
   getChurnChartData,
+  getChurnRiskFactors,
 } from '@/app/lib/api/churn-api';
 import { transformChurnDataToKPI } from '@/app/lib/api/churn-data-transformer';
 
@@ -32,61 +33,117 @@ export const kpiDataRegistry: Record<number, KPIDetailData> = {
   10: kpi10DemandForecastData,
 };
 
-// Cache for KPI #1 data (churn)
+// Shared cache for all KPI data (not just KPI #1)
+const kpiDataCache: Map<number, { data: KPIDetailData; timestamp: number }> = new Map();
+const CACHE_TTL = 60000; // 1 minute
+
+// Cache for KPI #1 data (churn) - kept for backward compatibility
 let churnDataCache: KPIDetailData | null = null;
 let churnDataCacheTime: number = 0;
-const CACHE_TTL = 60000; // 1 minute
+
+// Simple in-flight promise for KPI #1 (per-tab, client-side only)
+let inFlightKPI1Promise: Promise<KPIDetailData | null> | null = null;
 
 /**
  * Get KPI data - fetches from API for KPI #1, uses static data for others
  * Task 5.2: Fetch from API with fallback to static data
+ * Optimized: Uses shared cache to avoid duplicate API calls
  */
-export async function getKPIData(kpiId: number): Promise<KPIDetailData | null> {
+export async function getKPIData(
+  kpiId: number,
+  forceRefresh = false
+): Promise<KPIDetailData | null> {
+  const now = Date.now();
+
   // KPI #1 (Churn) - fetch from API
   if (kpiId === 1) {
-    // Check cache first
-    const now = Date.now();
-    if (churnDataCache && now - churnDataCacheTime < CACHE_TTL) {
-      return churnDataCache;
+    // If a request is already in-flight and we're not forcing a refresh, reuse it
+    if (inFlightKPI1Promise && !forceRefresh) {
+      return inFlightKPI1Promise;
     }
 
-    try {
-      // Fetch all churn data in parallel
-      const [summary, cohorts, metrics, chartData] = await Promise.all([
-        getChurnSummary(),
-        getChurnCohorts(),
-        getChurnMetrics(),
-        getChurnChartData('distribution'),
-      ]);
+    // Check cache first (per-tab, client-side only)
+    if (!forceRefresh) {
+      const cached = kpiDataCache.get(kpiId);
+      if (cached && now - cached.timestamp < CACHE_TTL) {
+        return cached.data;
+      }
 
-      // Transform API data to KPI format
-      const transformedData = transformChurnDataToKPI(
-        summary,
-        cohorts,
-        metrics,
-        chartData,
-        false // Not using fallback
-      );
-
-      // Update cache
-      churnDataCache = transformedData;
-      churnDataCacheTime = now;
-
-      return transformedData;
-    } catch (error) {
-      console.error('Failed to fetch churn data from API:', error);
-      // Fallback to static data
-      const fallbackData = transformChurnDataToKPI(
-        null,
-        null,
-        null,
-        null,
-        true // Using fallback
-      );
-      return fallbackData;
+      if (churnDataCache && now - churnDataCacheTime < CACHE_TTL) {
+        kpiDataCache.set(kpiId, { data: churnDataCache, timestamp: churnDataCacheTime });
+        return churnDataCache;
+      }
     }
+
+    // No valid cache – create a new in-flight promise
+    inFlightKPI1Promise = (async () => {
+      try {
+        const [summary, cohorts, metrics, chartData, riskFactorsResponse] =
+          await Promise.all([
+            getChurnSummary(),
+            getChurnCohorts(),
+            getChurnMetrics(),
+            getChurnChartData('distribution'),
+            getChurnRiskFactors(),
+          ]);
+
+        const transformedData = transformChurnDataToKPI(
+          summary,
+          cohorts,
+          metrics,
+          chartData,
+          riskFactorsResponse?.riskFactors || null,
+          false // Not using fallback
+        );
+
+        churnDataCache = transformedData;
+        churnDataCacheTime = Date.now();
+        kpiDataCache.set(kpiId, { data: transformedData, timestamp: Date.now() });
+
+        return transformedData;
+      } catch (error) {
+        console.error('[KPI1] Failed to fetch churn data from API:', error);
+
+        // Fallback to static data
+        const fallbackData = transformChurnDataToKPI(
+          null,
+          null,
+          null,
+          null,
+          null, // No risk factors in fallback
+          true // Using fallback
+        );
+        return fallbackData;
+      } finally {
+        // Allow a new request next time
+        inFlightKPI1Promise = null;
+      }
+    })();
+
+    return inFlightKPI1Promise;
   }
 
   // Other KPIs - use static data
-  return kpiDataRegistry[kpiId] || null;
+  const staticData = kpiDataRegistry[kpiId] || null;
+  if (staticData) {
+    kpiDataCache.set(kpiId, { data: staticData, timestamp: now });
+  }
+  return staticData;
+}
+
+/**
+ * Clear cache for a specific KPI or all KPIs
+ */
+export function clearKPICache(kpiId?: number): void {
+  if (kpiId) {
+    kpiDataCache.delete(kpiId);
+    if (kpiId === 1) {
+      churnDataCache = null;
+      churnDataCacheTime = 0;
+    }
+  } else {
+    kpiDataCache.clear();
+    churnDataCache = null;
+    churnDataCacheTime = 0;
+  }
 }
