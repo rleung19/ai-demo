@@ -24,6 +24,10 @@ import churnSummaryRoutes from './routes/churn/summary';
 import churnCohortsRoutes from './routes/churn/cohorts';
 import churnMetricsRoutes from './routes/churn/metrics';
 import churnChartDataRoutes from './routes/churn/chart-data';
+import churnRiskFactorsRoutes from './routes/churn/risk-factors';
+
+// Import database utilities
+import { initializePool, closePool } from './lib/db/oracle';
 
 const app = express();
 // Use API_PORT from env, but default to 3001 to avoid conflict with Next.js (3000)
@@ -51,6 +55,7 @@ app.use('/api/kpi/churn/summary', churnSummaryRoutes);
 app.use('/api/kpi/churn/cohorts', churnCohortsRoutes);
 app.use('/api/kpi/churn/metrics', churnMetricsRoutes);
 app.use('/api/kpi/churn/chart-data', churnChartDataRoutes);
+app.use('/api/kpi/churn/risk-factors', churnRiskFactorsRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -63,6 +68,7 @@ app.get('/', (req, res) => {
       cohorts: '/api/kpi/churn/cohorts',
       metrics: '/api/kpi/churn/metrics',
       chartData: '/api/kpi/churn/chart-data',
+      riskFactors: '/api/kpi/churn/risk-factors',
     },
   });
 });
@@ -77,7 +83,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log('='.repeat(60));
   console.log('Churn Model API Server');
   console.log('='.repeat(60));
@@ -86,4 +92,22 @@ app.listen(PORT, () => {
   console.log(`TNS_ADMIN: ${process.env.TNS_ADMIN || 'not set'}`);
   console.log(`ADB_WALLET_PATH: ${process.env.ADB_WALLET_PATH || 'not set'}`);
   console.log('='.repeat(60));
+  
+  // Initialize connection pool at startup (non-blocking)
+  initializePool().catch((err) => {
+    console.error('Failed to initialize pool at startup:', err.message);
+  });
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, closing connection pool...');
+  await closePool();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('SIGINT received, closing connection pool...');
+  await closePool();
+  process.exit(0);
 });

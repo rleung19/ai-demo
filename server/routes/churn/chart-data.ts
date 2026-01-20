@@ -68,7 +68,11 @@ router.get('/', async (req, res) => {
         AT_RISK_COUNT: number;
       }>(distributionQuery);
 
-      const data = (result.rows || []).map((row) => ({
+      const data = (result.rows || []).map((row: {
+        RISK_RANGE: string;
+        CUSTOMER_COUNT: number;
+        AT_RISK_COUNT: number;
+      }) => ({
         riskRange: row.RISK_RANGE,
         customerCount: row.CUSTOMER_COUNT,
         atRiskCount: row.AT_RISK_COUNT,

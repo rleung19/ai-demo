@@ -206,8 +206,8 @@ if (typeof window === 'undefined') {
   }
 }
 
-// Connection pool configuration
-const poolConfig: oracledb.PoolAttributes = {
+// Connection pool configuration (typed as any to avoid TS dependency on oracledb types)
+const poolConfig: any = {
   user: process.env.ADB_USERNAME || 'OML',
   password: process.env.ADB_PASSWORD,
   connectionString: process.env.ADB_CONNECTION_STRING,
@@ -219,12 +219,12 @@ const poolConfig: oracledb.PoolAttributes = {
   enableStatistics: false,
 };
 
-let pool: oracledb.Pool | null = null;
+let pool: any | null = null;
 
 /**
  * Get or create connection pool
  */
-export async function getPool(): Promise<oracledb.Pool> {
+export async function getPool(): Promise<any> {
   if (pool) {
     return pool;
   }
@@ -275,7 +275,7 @@ function ensureTNSConfig(): void {
 /**
  * Get a connection from the pool (or create direct connection if pool fails)
  */
-export async function getConnection(): Promise<oracledb.Connection> {
+export async function getConnection(): Promise<any> {
   // Ensure Oracle client is initialized
   initializeOracleClient();
   
@@ -333,13 +333,13 @@ export async function getConnection(): Promise<oracledb.Connection> {
  */
 export async function executeQuery<T = any>(
   query: string,
-  binds?: oracledb.BindParameters,
-  options?: oracledb.ExecuteOptions
-): Promise<oracledb.Result<T>> {
-  let connection: oracledb.Connection | null = null;
+  binds?: any,
+  options?: any
+): Promise<any> {
+  let connection: any | null = null;
   try {
     connection = await getConnection();
-    const result = await connection.execute<T>(query, binds, {
+    const result = await connection.execute(query, binds, {
       outFormat: oracledb.OUT_FORMAT_OBJECT,
       ...options,
     });

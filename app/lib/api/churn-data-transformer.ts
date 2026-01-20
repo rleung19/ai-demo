@@ -9,6 +9,7 @@ import {
   ChurnCohort,
   ChurnMetrics,
   ChartData,
+  RiskFactor,
 } from './churn-api';
 import { kpi1ChurnRiskData } from '@/app/data/synthetic/kpi1-churn-risk';
 
@@ -63,6 +64,7 @@ export function transformChurnDataToKPI(
   cohorts: ChurnCohort[] | null,
   metrics: ChurnMetrics | null,
   chartData: ChartData | null,
+  riskFactors: RiskFactor[] | null = null,
   useFallback = false
 ): KPIDetailData {
   // Use fallback data if API data is not available
@@ -133,9 +135,9 @@ export function transformChurnDataToKPI(
     return {
       name: `${cohort.cohort} Customers`,
       value: formatPercentage(cohort.averageRiskScore),
-      label: `${formatNumber(cohort.customerCount)} total • ${formatNumber(cohort.atRiskCount)} at-risk • ${formatCurrency(
+      label: `${formatNumber(cohort.customerCount)} total\n${formatNumber(cohort.atRiskCount)} at-risk\n${formatCurrency(
         cohort.ltvAtRisk
-      )} LTV`,
+      )} LTV at Risk`,
       riskLevel,
     };
   });
@@ -242,7 +244,14 @@ export function transformChurnDataToKPI(
       },
     },
     cohorts: transformedCohorts,
-    tableData: kpi1ChurnRiskData.tableData, // Include risk factors table data
+    tableData: riskFactors && riskFactors.length > 0
+      ? riskFactors.map((rf) => ({
+          riskFactor: rf.riskFactor,
+          impactScore: rf.impactScore,
+          affectedCustomers: rf.affectedCustomers,
+          primarySegment: rf.primarySegment,
+        }))
+      : kpi1ChurnRiskData.tableData, // Use API data if available, otherwise fallback to static
     actions: kpi1ChurnRiskData.actions,
     impact: kpi1ChurnRiskData.impact,
     insight: kpi1ChurnRiskData.insight,

@@ -12,8 +12,12 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/app/lib/db/oracle';
 import { handleDatabaseError } from '@/app/lib/api/errors';
+import { logRequest } from '@/app/lib/api/request-logger';
 
 export async function GET() {
+  const startTime = Date.now();
+  const path = '/api/kpi/churn/summary';
+  
   try {
     // Get summary statistics from CHURN_PREDICTIONS
     const summaryQuery = `
@@ -82,12 +86,15 @@ export async function GET() {
       modelVersion: modelInfo?.MODEL_VERSION || null,
     };
 
+    logRequest('GET', path, 200, startTime);
     return NextResponse.json(response);
   } catch (error: any) {
     if (error.message?.includes('ORA-') || error.message?.includes('database')) {
-      return handleDatabaseError(error);
+      const errorResponse = handleDatabaseError(error);
+      logRequest('GET', path, errorResponse.status, startTime);
+      return errorResponse;
     }
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       {
         error: 'Service unavailable',
         message: error.message || 'Unable to fetch churn summary',
@@ -95,5 +102,7 @@ export async function GET() {
       },
       { status: 503 }
     );
+    logRequest('GET', path, 503, startTime);
+    return errorResponse;
   }
 }

@@ -64,7 +64,13 @@ router.get('/', async (req, res) => {
       LTV_AT_RISK: number;
     }>(cohortsQuery);
 
-    const cohorts = (result.rows || []).map((row) => ({
+    const cohorts = (result.rows || []).map((row: {
+      COHORT: string;
+      CUSTOMER_COUNT: number;
+      AT_RISK_COUNT: number;
+      AVG_RISK_SCORE: number;
+      LTV_AT_RISK: number;
+    }) => ({
       cohort: row.COHORT,
       customerCount: row.CUSTOMER_COUNT,
       atRiskCount: row.AT_RISK_COUNT,

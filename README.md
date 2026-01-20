@@ -54,13 +54,14 @@ Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 
 - [Setup Guide](SETUP.md) - Quick setup instructions
 - [ADB Setup Guide](docs/ADB_SETUP.md) - Detailed Oracle ADB configuration
+- [API Server Switch](docs/API_SERVER_SWITCH.md) - Switch between Next.js API routes and Express server
 - [OpenSpec Proposal](openspec/changes/add-churn-model-backend-api/proposal.md) - Churn model backend API proposal
 - [OML Notebooks](oml-notebooks/README.md) - OML notebook documentation
 
 ## Technology Stack
 
 - **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes, Oracle ADB Serverless
+- **Backend**: Next.js API Routes or Express Server (configurable), Oracle ADB Serverless
 - **ML**: Oracle Machine Learning (OML4Py), XGBoost
 - **Database**: Oracle Autonomous Database Serverless
 

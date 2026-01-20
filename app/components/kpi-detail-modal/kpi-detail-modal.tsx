@@ -1,8 +1,20 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { KPIDetailData } from '@/app/lib/types/kpi';
 import ChartWrapper from '../charts/chart-wrapper';
+
+// Cohort definitions for tooltips
+const cohortDefinitions: Record<string, string> = {
+  VIP: 'High-value customers with lifetime value over $5,000 or loyalty card membership. These are premium customers who represent significant revenue.',
+  Regular: 'Active customers who have made at least 2 purchases, are active within the last 90 days, and regularly log in. These are engaged, stable customers.',
+  New: 'Recently acquired customers who have been members for less than 1 year. These customers are still in the onboarding phase.',
+  Dormant: 'Inactive customers who have not made a purchase in over 90 days or have not logged in. These customers are at high risk of churn.',
+  Other: 'Customers who do not fit into the other defined segments.',
+};
+
+// Impact score definition
+const impactScoreDefinition = 'Impact Score represents the average churn probability (0-100%) for customers affected by this risk factor. A higher score means customers with this factor have a higher likelihood of churning.';
 
 interface KPIDetailModalProps {
   isOpen: boolean;
@@ -279,23 +291,29 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
                 Segment Breakdown
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {cohorts.map((cohort, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-xl p-5 border"
-                    style={{
-                      backgroundColor: 'var(--bg-card)',
-                      borderColor:
-                        cohort.riskLevel === 'high'
-                          ? 'rgba(244, 63, 94, 0.3)'
-                          : cohort.riskLevel === 'medium'
-                            ? 'rgba(245, 158, 11, 0.3)'
-                            : 'rgba(16, 185, 129, 0.3)',
-                    }}
-                  >
-                    <div className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
-                      {cohort.name}
-                    </div>
+                {cohorts.map((cohort, idx) => {
+                  // Extract base cohort name (remove " Customers" suffix if present)
+                  const baseCohortName = cohort.name.replace(' Customers', '').trim();
+                  const definition = cohortDefinitions[baseCohortName] || cohortDefinitions[cohort.name] || 'Customer segment definition not available.';
+                  return (
+                    <div
+                      key={idx}
+                      className="rounded-xl p-5 border relative group cursor-help"
+                      style={{
+                        backgroundColor: 'var(--bg-card)',
+                        borderColor:
+                          cohort.riskLevel === 'high'
+                            ? 'rgba(244, 63, 94, 0.3)'
+                            : cohort.riskLevel === 'medium'
+                              ? 'rgba(245, 158, 11, 0.3)'
+                              : 'rgba(16, 185, 129, 0.3)',
+                      }}
+                      title={definition}
+                    >
+                      <div className="text-xs mb-2 flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                        {cohort.name}
+                        <span className="text-[10px] opacity-60" title={definition}>ℹ️</span>
+                      </div>
                     <div
                       className="text-2xl font-bold font-mono mb-1"
                       style={{
@@ -309,11 +327,15 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
                     >
                       {cohort.value}
                     </div>
-                    <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    <div 
+                      className="text-xs whitespace-pre-line" 
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
                       {cohort.label}
                     </div>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -341,10 +363,14 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
                         RISK FACTOR
                       </th>
                       <th
-                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide cursor-help relative group"
                         style={{ color: 'var(--text-secondary)' }}
+                        title={impactScoreDefinition}
                       >
-                        IMPACT SCORE
+                        <div className="flex items-center gap-1">
+                          IMPACT SCORE
+                          <span className="text-[10px] opacity-60" title={impactScoreDefinition}>ℹ️</span>
+                        </div>
                       </th>
                       <th
                         className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"

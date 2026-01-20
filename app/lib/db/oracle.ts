@@ -64,6 +64,7 @@ function findOracleLibDir(): string | null {
  * Must be called before any connection attempts
  */
 export function initializeOracleClient(): void {
+  // Early return if already initialized (no logging needed)
   if (clientInitialized) {
     return;
   }
@@ -75,6 +76,7 @@ export function initializeOracleClient(): void {
     return;
   }
 
+  // Only log if we're actually going to initialize
   console.log(`[Oracle Init] Starting initialization with wallet: ${walletPath}`);
 
   // Set TNS_ADMIN if not already set (critical for wallet access)
@@ -206,8 +208,8 @@ if (typeof window === 'undefined') {
   }
 }
 
-// Connection pool configuration
-const poolConfig: oracledb.PoolAttributes = {
+// Connection pool configuration (typed as any to avoid hard dependency on oracledb TS types)
+const poolConfig: any = {
   user: process.env.ADB_USERNAME || 'OML',
   password: process.env.ADB_PASSWORD,
   connectionString: process.env.ADB_CONNECTION_STRING,
@@ -219,33 +221,164 @@ const poolConfig: oracledb.PoolAttributes = {
   enableStatistics: false,
 };
 
-let pool: oracledb.Pool | null = null;
+// Use global variable to persist across module reloads in Next.js
+// In Node.js, globalThis persists across module reloads
+declare global {
+  var __oraclePool: any | null | undefined;
+  var __oraclePoolPromise: Promise<any> | null | undefined;
+}
+
+// Use global variables that persist across Next.js module reloads
+const getGlobalPool = (): any | null => {
+  if (typeof globalThis !== 'undefined') {
+    return globalThis.__oraclePool || null;
+  }
+  return null;
+};
+
+const setGlobalPool = (newPool: any | null): void => {
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__oraclePool = newPool;
+  }
+};
+
+const getGlobalPoolPromise = (): Promise<any> | null => {
+  if (typeof globalThis !== 'undefined') {
+    return globalThis.__oraclePoolPromise || null;
+  }
+  return null;
+};
+
+const setGlobalPoolPromise = (promise: Promise<any> | null): void => {
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__oraclePoolPromise = promise;
+  }
+};
+
+// Legacy module-level variables (for backward compatibility)
+let pool: any | null = null;
+let poolCreationPromise: Promise<any> | null = null;
 
 /**
- * Get or create connection pool
+ * Get or create connection pool (singleton pattern with race condition protection)
  */
-export async function getPool(): Promise<oracledb.Pool> {
+export async function getPool(): Promise<any> {
+  // Check module-level pool first (fast path)
   if (pool) {
     return pool;
   }
-
+  
+  // Check global pool (persists across module reloads in Next.js)
+  // Only check if module-level pool is null (indicates module was reloaded)
+  const globalPool = getGlobalPool();
+  if (globalPool) {
+    pool = globalPool; // Sync module-level variable for faster future access
+    // Only log once when we recover from a module reload
+    console.log('[Pool] Recovered pool from global scope (module was reloaded)');
+    return globalPool;
+  }
+  
+  // Check global promise (persists across module reloads)
+  const globalPromise = getGlobalPoolPromise();
+  if (globalPromise) {
+    poolCreationPromise = globalPromise; // Sync module-level variable
+    console.log('[Pool] Waiting for existing pool creation (from global promise)...');
+    try {
+      const existingPool = await globalPromise;
+      if (existingPool) {
+        pool = existingPool;
+        setGlobalPool(existingPool);
+        console.log('[Pool] Pool set from global promise result');
+        setGlobalPoolPromise(null);
+        poolCreationPromise = null;
+        return pool;
+      }
+    } catch (err) {
+      setGlobalPoolPromise(null);
+      poolCreationPromise = null;
+      throw err;
+    }
+  }
+  
   if (!process.env.ADB_PASSWORD || !process.env.ADB_CONNECTION_STRING) {
     throw new Error('ADB_PASSWORD and ADB_CONNECTION_STRING must be set in environment variables');
   }
 
-  try {
-    // Ensure Oracle client is initialized before creating pool
-    initializeOracleClient();
-    
-    pool = await oracledb.createPool(poolConfig);
-    console.log('✓ Oracle connection pool created');
-    return pool;
-  } catch (err: any) {
-    console.error('❌ Failed to create connection pool:', err.message);
-    console.error('   Error code:', err.code);
-    console.error('   Error number:', err.errorNum);
-    throw new Error(`Database connection failed: ${err.message}`);
+  // ATOMIC ACQUISITION: Check global promise one more time (double-check pattern)
+  // Another module instance might have created it between our first check and now
+  const finalGlobalPromise = getGlobalPoolPromise();
+  if (finalGlobalPromise) {
+    poolCreationPromise = finalGlobalPromise; // Sync module-level
+    console.log('[Pool] Global promise appeared during check, waiting for it...');
+    try {
+      const existingPool = await finalGlobalPromise;
+      if (existingPool) {
+        pool = existingPool;
+        setGlobalPool(existingPool);
+        console.log('[Pool] Pool set from final global promise check');
+        return pool;
+      }
+    } catch (err) {
+      throw err;
+    }
   }
+
+  // Create a promise for pool creation (acts as a lock)
+  // CRITICAL: Set global promise IMMEDIATELY (synchronously) before any async work
+  // This prevents race conditions where multiple module instances all try to create a pool
+  console.log('[Pool] Starting pool creation...');
+  poolCreationPromise = (async () => {
+    try {
+      // Triple-check global pool (another instance might have created it)
+      const existingGlobalPool = getGlobalPool();
+      if (existingGlobalPool) {
+        pool = existingGlobalPool;
+        console.log('[Pool] Found existing pool in global scope (triple-check), returning it');
+        poolCreationPromise = null;
+        setGlobalPoolPromise(null);
+        return pool;
+      }
+
+      // Triple-check module-level pool
+      if (pool) {
+        setGlobalPool(pool);
+        console.log('[Pool] Pool already exists (triple-check), returning existing pool');
+        poolCreationPromise = null;
+        setGlobalPoolPromise(null);
+        return pool;
+      }
+
+      // Ensure Oracle client is initialized before creating pool
+      initializeOracleClient();
+      
+      const newPool = await oracledb.createPool(poolConfig);
+      // Set pool in BOTH global and module-level variables (critical for Next.js module reloads)
+      pool = newPool;
+      setGlobalPool(newPool);
+      console.log('✓ Oracle connection pool created');
+      console.log('[Pool] Pool set in both global and module scope');
+      // Clear global promise now that pool is created (so new module instances use the pool directly)
+      setGlobalPoolPromise(null);
+      poolCreationPromise = null;
+      return pool;
+    } catch (err: any) {
+      console.error('❌ Failed to create connection pool:', err.message);
+      console.error('   Error code:', err.code);
+      console.error('   Error number:', err.errorNum);
+      // Clear BOTH global and module promises on error so retry is possible
+      setGlobalPoolPromise(null);
+      poolCreationPromise = null;
+      throw new Error(`Database connection failed: ${err.message}`);
+    }
+  })();
+
+  // CRITICAL: Store promise in global scope IMMEDIATELY (synchronously)
+  // This must happen BEFORE the async function starts executing
+  // Once stored, all other module instances will see it and wait for this one
+  setGlobalPoolPromise(poolCreationPromise);
+  console.log('[Pool] Promise stored in global scope (lock acquired)');
+
+  return poolCreationPromise;
 }
 
 /**
@@ -275,7 +408,7 @@ function ensureTNSConfig(): void {
 /**
  * Get a connection from the pool (or create direct connection if pool fails)
  */
-export async function getConnection(): Promise<oracledb.Connection> {
+export async function getConnection(): Promise<any> {
   // Ensure Oracle client is initialized
   initializeOracleClient();
   
@@ -333,16 +466,24 @@ export async function getConnection(): Promise<oracledb.Connection> {
  */
 export async function executeQuery<T = any>(
   query: string,
-  binds?: oracledb.BindParameters,
-  options?: oracledb.ExecuteOptions
-): Promise<oracledb.Result<T>> {
-  let connection: oracledb.Connection | null = null;
+  binds?: any,
+  options?: any
+): Promise<any> {
+  let connection: any | null = null;
   try {
     connection = await getConnection();
-    const result = await connection.execute<T>(query, binds, {
+    const executeOptions: any = {
       outFormat: oracledb.OUT_FORMAT_OBJECT,
       ...options,
-    });
+    };
+
+    // Always pass three parameters: query, binds (or {}), options
+    // If binds is undefined, pass empty object to avoid parameter confusion (NJS-005)
+    const result = await connection.execute(
+      query,
+      binds || {},
+      executeOptions
+    );
     return result;
   } catch (err: any) {
     console.error('❌ Query execution failed:', err.message);
@@ -357,6 +498,31 @@ export async function executeQuery<T = any>(
         console.warn('⚠️  Error closing connection:', closeErr.message);
       }
     }
+  }
+}
+
+/**
+ * Initialize connection pool at startup
+ * Call this when the server starts to warm up connections
+ */
+export async function initializePool(): Promise<void> {
+  try {
+    // Check if pool already exists in global scope (prevents duplicate creation)
+    const existingPool = getGlobalPool();
+    if (existingPool) {
+      console.log('[Pool Init] Pool already exists in global scope, skipping initialization');
+      // Sync module-level variable
+      pool = existingPool;
+      return;
+    }
+    
+    console.log('[Pool Init] Initializing connection pool at startup...');
+    await getPool();
+    console.log('✓ Connection pool initialized and ready');
+  } catch (err: any) {
+    console.error('❌ Failed to initialize connection pool at startup:', err.message);
+    console.warn('⚠️  Pool will be created lazily on first request');
+    // Don't throw - allow server to start, pool will be created on first request
   }
 }
 

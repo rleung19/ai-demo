@@ -10,8 +10,12 @@ import { NextResponse } from 'next/server';
 import { executeQuery } from '@/app/lib/db/oracle';
 import { validateQueryParams } from '@/app/lib/api/validation';
 import { handleValidationError, handleDatabaseError } from '@/app/lib/api/errors';
+import { logRequest } from '@/app/lib/api/request-logger';
 
 export async function GET(request: Request) {
+  const startTime = Date.now();
+  const path = '/api/kpi/churn/chart-data';
+  
   try {
     const { searchParams } = new URL(request.url);
     
@@ -71,12 +75,17 @@ export async function GET(request: Request) {
         AT_RISK_COUNT: number;
       }>(distributionQuery);
 
-      const data = (result.rows || []).map((row) => ({
+      const data = (result.rows || []).map((row: {
+        RISK_RANGE: string;
+        CUSTOMER_COUNT: number;
+        AT_RISK_COUNT: number;
+      }) => ({
         riskRange: row.RISK_RANGE,
         customerCount: row.CUSTOMER_COUNT,
         atRiskCount: row.AT_RISK_COUNT,
       }));
 
+      logRequest('GET', path, 200, startTime);
       return NextResponse.json({
         chartType: 'distribution',
         data,
@@ -84,19 +93,24 @@ export async function GET(request: Request) {
     } else if (chartType === 'cohort-trend') {
       // Placeholder for future: cohort trends over time
       // This would require CHURN_PREDICTIONS_HISTORY table
+      logRequest('GET', path, 200, startTime);
       return NextResponse.json({
         chartType: 'cohort-trend',
         message: 'Historical trend data not yet available',
         data: [],
       });
     } else {
-      return handleValidationError([`Chart type '${chartType}' is not supported. Use 'distribution' or 'cohort-trend'.`]);
+      const errorResponse = handleValidationError([`Chart type '${chartType}' is not supported. Use 'distribution' or 'cohort-trend'.`]);
+      logRequest('GET', path, errorResponse.status, startTime);
+      return errorResponse;
     }
   } catch (error: any) {
     if (error.message?.includes('ORA-') || error.message?.includes('database')) {
-      return handleDatabaseError(error);
+      const errorResponse = handleDatabaseError(error);
+      logRequest('GET', path, errorResponse.status, startTime);
+      return errorResponse;
     }
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       {
         error: 'Service unavailable',
         message: error.message || 'Unable to fetch chart data',
@@ -104,5 +118,7 @@ export async function GET(request: Request) {
       },
       { status: 503 }
     );
+    logRequest('GET', path, 503, startTime);
+    return errorResponse;
   }
 }

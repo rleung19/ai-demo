@@ -7,8 +7,12 @@
 
 import { NextResponse } from 'next/server';
 import { testConnection } from '@/app/lib/db/oracle';
+import { logRequest } from '@/app/lib/api/request-logger';
 
 export async function GET() {
+  const startTime = Date.now();
+  const path = '/api/health';
+  
   try {
     // Check environment variables
     const envCheck = {
@@ -23,9 +27,9 @@ export async function GET() {
     let dbError: string | null = null;
     
     try {
-      // Set a 3-second timeout for database connection test
+      // Set a 10-second timeout for database connection test (first connection can be slow)
       const timeoutPromise = new Promise<boolean>((_, reject) => {
-        setTimeout(() => reject(new Error('Database connection timeout')), 3000);
+        setTimeout(() => reject(new Error('Database connection timeout')), 10000);
       });
       
       dbConnected = await Promise.race([
@@ -47,10 +51,13 @@ export async function GET() {
       ...(dbError && { databaseError: dbError }),
     };
 
+    const status = dbConnected ? 200 : 503;
+    logRequest('GET', path, status, startTime);
     return NextResponse.json(health, {
-      status: dbConnected ? 200 : 503,
+      status,
     });
   } catch (error: any) {
+    logRequest('GET', path, 503, startTime);
     return NextResponse.json(
       {
         status: 'unhealthy',

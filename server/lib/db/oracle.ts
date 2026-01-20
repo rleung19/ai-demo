@@ -196,27 +196,101 @@ export function initializeOracleClient(): void {
 // This ensures environment variables are loaded first
 
 // Connection pool configuration - created lazily to ensure env vars are loaded
-function getPoolConfig(): oracledb.PoolAttributes {
+function getPoolConfig(): any {
   return {
     user: process.env.ADB_USERNAME || 'OML',
     password: process.env.ADB_PASSWORD,
     connectionString: process.env.ADB_CONNECTION_STRING,
-    poolMin: 2,
-    poolMax: 10,
+    poolMin: 1, // Reduced to avoid too many idle connections
+    poolMax: 5, // Reduced to avoid connection exhaustion
     poolIncrement: 1,
-    poolTimeout: 60,
-    queueTimeout: 60000, // 60 seconds
+    poolTimeout: 30, // Reduced from 60 - close idle connections faster
+    queueTimeout: 30000, // 30 seconds - reduced from 60
     enableStatistics: false,
+    // Add connection validation
+    stmtCacheSize: 0, // Disable statement cache to reduce memory
   };
 }
 
-let pool: oracledb.Pool | null = null;
+let pool: any | null = null;
+let poolRecreating = false;
+
+/**
+ * Check if pool is healthy
+ */
+async function isPoolHealthy(poolInstance: any): Promise<boolean> {
+  let testConnection: any | null = null;
+  try {
+    testConnection = await poolInstance.getConnection();
+    // Try a simple query to verify connection is alive
+    await testConnection.execute('SELECT 1 FROM DUAL');
+    return true;
+  } catch (err: any) {
+    // ORA-03113 means connection is broken
+    if (err.message?.includes('ORA-03113') || err.message?.includes('end-of-file')) {
+      return false;
+    }
+    return false;
+  } finally {
+    if (testConnection) {
+      try {
+        await testConnection.close();
+      } catch {
+        // Ignore close errors
+      }
+    }
+  }
+}
+
+/**
+ * Recreate the connection pool
+ */
+async function recreatePool(): Promise<any> {
+  if (poolRecreating) {
+    // Wait a bit and retry
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    if (pool) {
+      return pool;
+    }
+  }
+  
+  poolRecreating = true;
+  
+  try {
+    // Close existing pool if it exists
+    if (pool) {
+      try {
+        await pool.close(5); // Wait up to 5 seconds
+      } catch {
+        // Ignore errors when closing broken pool
+      }
+      pool = null;
+    }
+    
+    // Wait a moment before recreating
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Recreate pool
+    const config = getPoolConfig();
+    pool = await oracledb.createPool(config);
+    console.log('✓ Oracle connection pool recreated');
+    return pool;
+  } finally {
+    poolRecreating = false;
+  }
+}
 
 /**
  * Get or create connection pool
  */
-export async function getPool(): Promise<oracledb.Pool> {
+export async function getPool(): Promise<any> {
   if (pool) {
+    // Check if pool is healthy
+    const healthy = await isPoolHealthy(pool);
+    if (!healthy) {
+      console.warn('⚠️  Pool is unhealthy, recreating...');
+      return await recreatePool();
+    }
     return pool;
   }
 
@@ -274,8 +348,9 @@ function ensureTNSConfig(): void {
 
 /**
  * Get a connection from the pool (or create direct connection if pool fails)
+ * Includes retry logic for ORA-03113 errors
  */
-export async function getConnection(): Promise<oracledb.Connection> {
+export async function getConnection(retries = 2): Promise<any> {
   // Ensure TNS_ADMIN is set BEFORE initializing Oracle client (critical!)
   // This matches the working test-node-connection.js pattern
   const walletPath = process.env.ADB_WALLET_PATH;
@@ -296,84 +371,185 @@ export async function getConnection(): Promise<oracledb.Connection> {
   const connectionString = config.connectionString;
   const thickMode = isThickMode();
   
-  if (!thickMode) {
-    console.log('ℹ️  Using thin mode (TNS_ADMIN configured for wallet access)');
-  }
-  
-  try {
-    // Try to use pool first
-    const poolInstance = await getPool();
-    return await poolInstance.getConnection();
-  } catch (poolErr: any) {
-    console.warn('⚠️  Pool connection failed, trying direct connection:', poolErr.message);
-    // Fallback to direct connection (matching test-node-connection.js pattern)
+  for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const connection = await oracledb.getConnection({
-        user: config.user,
-        password: config.password,
-        connectionString: connectionString, // TNS alias like 'hhzj2h81ddjwn1dm_medium'
-      });
-      console.log('✓ Direct connection established');
-      return connection;
-    } catch (directErr: any) {
-      console.error('❌ Direct connection failed:', directErr.message);
-      console.error('   Connection string:', connectionString);
-      console.error('   TNS_ADMIN:', process.env.TNS_ADMIN);
-      console.error('   Wallet path:', walletPath);
-      console.error('   Mode:', thickMode ? 'thick' : 'thin');
+      // Try to use pool first
+      const poolInstance = await getPool();
+      const connection = await poolInstance.getConnection();
       
-      // Provide helpful error message
-      if (directErr.message.includes('ORA-12162')) {
-        console.error('\n💡 ORA-12162: TNS alias not resolved');
-        console.error('   Check:');
-        console.error('   1. TNS_ADMIN is set correctly');
-        console.error('   2. tnsnames.ora exists in wallet directory');
-        console.error('   3. Connection string matches alias in tnsnames.ora');
+      // Validate connection is alive
+      try {
+        await connection.execute('SELECT 1 FROM DUAL');
+        return connection;
+      } catch (validateErr: any) {
+        // Connection is broken, close it and retry
+        try {
+          await connection.close();
+        } catch {
+          // Ignore close errors
+        }
+        
+        if (validateErr.message?.includes('ORA-03113') || validateErr.message?.includes('end-of-file')) {
+          console.warn(`⚠️  Connection validation failed (ORA-03113), attempt ${attempt + 1}/${retries + 1}`);
+          if (attempt < retries) {
+            // Recreate pool and retry
+            pool = null;
+            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
+            continue;
+          }
+        }
+        throw validateErr;
+      }
+    } catch (poolErr: any) {
+      // Check if it's an ORA-03113 error
+      if (poolErr.message?.includes('ORA-03113') || poolErr.message?.includes('end-of-file')) {
+        console.warn(`⚠️  Pool connection failed (ORA-03113), attempt ${attempt + 1}/${retries + 1}:`, poolErr.message);
+        
+        if (attempt < retries) {
+          // Recreate pool and retry
+          pool = null;
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
+          continue;
+        }
       }
       
-      throw new Error(`Database connection failed: ${directErr.message}`);
+      // For other errors or final attempt, try direct connection
+      if (attempt === retries) {
+        console.warn('⚠️  Pool connection failed, trying direct connection:', poolErr.message);
+        try {
+          const connection = await oracledb.getConnection({
+            user: config.user,
+            password: config.password,
+            connectionString: connectionString,
+          });
+          
+          // Validate direct connection
+          await connection.execute('SELECT 1 FROM DUAL');
+          console.log('✓ Direct connection established');
+          return connection;
+        } catch (directErr: any) {
+          console.error('❌ Direct connection failed:', directErr.message);
+          console.error('   Connection string:', connectionString);
+          console.error('   TNS_ADMIN:', process.env.TNS_ADMIN);
+          console.error('   Wallet path:', walletPath);
+          console.error('   Mode:', thickMode ? 'thick' : 'thin');
+          
+          // Provide helpful error message
+          if (directErr.message.includes('ORA-12162')) {
+            console.error('\n💡 ORA-12162: TNS alias not resolved');
+            console.error('   Check:');
+            console.error('   1. TNS_ADMIN is set correctly');
+            console.error('   2. tnsnames.ora exists in wallet directory');
+            console.error('   3. Connection string matches alias in tnsnames.ora');
+          }
+          
+          throw new Error(`Database connection failed: ${directErr.message}`);
+        }
+      } else {
+        // Retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        continue;
+      }
     }
   }
+  
+  throw new Error('Failed to get connection after retries');
 }
 
 /**
  * Execute a query and return results
+ * Includes retry logic for connection errors
  */
 export async function executeQuery<T = any>(
   query: string,
-  binds?: oracledb.BindParameters,
-  options?: oracledb.ExecuteOptions
-): Promise<oracledb.Result<T>> {
-  let connection: oracledb.Connection | null = null;
-  try {
-    connection = await getConnection();
-    const executeOptions: oracledb.ExecuteOptions = {
-      outFormat: oracledb.OUT_FORMAT_OBJECT,
-      ...options,
-    };
-    
-    // Always pass three parameters: query, binds (or {}), options
-    // If binds is undefined, pass empty object to avoid parameter confusion
-    const result = await connection.execute<T>(
-      query,
-      binds || {},
-      executeOptions
-    );
-    
-    return result;
-  } catch (err: any) {
-    console.error('❌ Query execution failed:', err.message);
-    console.error('   Error code:', err.code);
-    console.error('   Error number:', err.errorNum);
-    throw err;
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeErr: any) {
-        console.warn('⚠️  Error closing connection:', closeErr.message);
+  binds?: any,
+  options?: any,
+  retries = 1
+): Promise<any> {
+  let connection: any | null = null;
+  
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      connection = await getConnection(attempt === retries ? 0 : 1); // Only retry connection on last attempt
+      const executeOptions: any = {
+        outFormat: oracledb.OUT_FORMAT_OBJECT,
+        ...options,
+      };
+      
+      // Always pass three parameters: query, binds (or {}), options
+      // If binds is undefined, pass empty object to avoid parameter confusion
+      const result = await connection.execute(
+        query,
+        binds || {},
+        executeOptions
+      );
+      
+      // Success - return result
+      return result;
+    } catch (err: any) {
+      // Check if it's a connection error that we should retry
+      const isConnectionError = 
+        err.message?.includes('ORA-03113') ||
+        err.message?.includes('end-of-file') ||
+        err.message?.includes('connection') ||
+        err.message?.includes('NJS-500');
+      
+      if (isConnectionError && attempt < retries) {
+        console.warn(`⚠️  Query failed with connection error (attempt ${attempt + 1}/${retries + 1}), retrying...`);
+        // Close broken connection
+        if (connection) {
+          try {
+            await connection.close();
+          } catch {
+            // Ignore close errors
+          }
+          connection = null;
+        }
+        // Invalidate pool so it gets recreated
+        if (pool) {
+          pool = null;
+        }
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        continue;
+      }
+      
+      // Not a retryable error or final attempt
+      console.error('❌ Query execution failed:', err.message);
+      console.error('   Error code:', err.code);
+      console.error('   Error number:', err.errorNum);
+      throw err;
+    } finally {
+      if (connection) {
+        try {
+          await connection.close();
+        } catch (closeErr: any) {
+          // Only log if it's not a connection error (which is expected for broken connections)
+          if (!closeErr.message?.includes('ORA-03113') && !closeErr.message?.includes('end-of-file')) {
+            console.warn('⚠️  Error closing connection:', closeErr.message);
+          }
+        }
+        connection = null;
       }
     }
+  }
+  
+  throw new Error('Query execution failed after retries');
+}
+
+/**
+ * Initialize connection pool at startup
+ * Call this when the server starts to warm up connections
+ */
+export async function initializePool(): Promise<void> {
+  try {
+    console.log('[Pool Init] Initializing connection pool at startup...');
+    await getPool();
+    console.log('✓ Connection pool initialized and ready');
+  } catch (err: any) {
+    console.error('❌ Failed to initialize connection pool at startup:', err.message);
+    console.warn('⚠️  Pool will be created lazily on first request');
+    // Don't throw - allow server to start, pool will be created on first request
   }
 }
 

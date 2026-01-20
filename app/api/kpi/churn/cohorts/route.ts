@@ -9,8 +9,12 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/app/lib/db/oracle';
 import { handleDatabaseError } from '@/app/lib/api/errors';
+import { logRequest } from '@/app/lib/api/request-logger';
 
 export async function GET() {
+  const startTime = Date.now();
+  const path = '/api/kpi/churn/cohorts';
+  
   try {
     // Query to get cohort breakdown with updated VIP definition
     const cohortsQuery = `
@@ -65,7 +69,13 @@ export async function GET() {
       LTV_AT_RISK: number;
     }>(cohortsQuery);
 
-    const cohorts = (result.rows || []).map((row) => ({
+    const cohorts = (result.rows || []).map((row: {
+      COHORT: string;
+      CUSTOMER_COUNT: number;
+      AT_RISK_COUNT: number;
+      AVG_RISK_SCORE: number;
+      LTV_AT_RISK: number;
+    }) => ({
       cohort: row.COHORT,
       customerCount: row.CUSTOMER_COUNT,
       atRiskCount: row.AT_RISK_COUNT,
@@ -76,12 +86,15 @@ export async function GET() {
       ltvAtRisk: Math.round(row.LTV_AT_RISK * 100) / 100,
     }));
 
+    logRequest('GET', path, 200, startTime);
     return NextResponse.json({ cohorts });
   } catch (error: any) {
     if (error.message?.includes('ORA-') || error.message?.includes('database')) {
-      return handleDatabaseError(error);
+      const errorResponse = handleDatabaseError(error);
+      logRequest('GET', path, errorResponse.status, startTime);
+      return errorResponse;
     }
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       {
         error: 'Service unavailable',
         message: error.message || 'Unable to fetch cohort data',
@@ -89,5 +102,7 @@ export async function GET() {
       },
       { status: 503 }
     );
+    logRequest('GET', path, 503, startTime);
+    return errorResponse;
   }
 }
