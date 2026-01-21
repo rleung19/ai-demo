@@ -25,7 +25,8 @@ mkdir -p ~/compose/demo/ecommerce-churn-ml-dashboard
 mkdir -p ~/compose/demo/ecommerce-churn-ml-dashboard/wallets
 
 cd ~/compose/demo/ecommerce-churn-ml-dashboard
-git clone <YOUR_REPO_URL> .
+# IMPORTANT: clone *into* the current directory (note the final dot)
+git clone https://github.com/rleung19/ai-demo.git .
 ```
 
 Copy your **Oracle ADB wallet** from your Mac to the VM, for example into:
