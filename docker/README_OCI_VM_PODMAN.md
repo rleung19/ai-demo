@@ -20,13 +20,16 @@ ssh ubuntu@YOUR_VM_IP
 # Install Podman and podman-compose (Oracle Linux example)
 sudo dnf install -y podman podman-docker podman-compose
 
-# Create directory for this project (including a wallets subdirectory)
+# Create directory for this project
 mkdir -p ~/compose/demo/ecommerce-churn-ml-dashboard
-mkdir -p ~/compose/demo/ecommerce-churn-ml-dashboard/wallets
 
 cd ~/compose/demo/ecommerce-churn-ml-dashboard
+
 # IMPORTANT: clone *into* the current directory (note the final dot)
 git clone https://github.com/rleung19/ai-demo.git .
+
+# Create a wallets directory inside the project (this path is in .gitignore)
+mkdir -p wallets/Wallet_XXXX
 ```
 
 Copy your **Oracle ADB wallet** from your Mac to the VM, for example into:
@@ -35,10 +38,10 @@ Copy your **Oracle ADB wallet** from your Mac to the VM, for example into:
 
 Ensure the wallet directory is readable by the user running Podman.
 
-Create an env file (not committed to Git) for secrets:
+Create an env file (not committed to Git) for secrets (used by `podman-compose` via `env_file` in the `docker` directory):
 
 ```bash
-cd ~/compose/demo/ecommerce-churn-ml-dashboard
+cd ~/compose/demo/ecommerce-churn-ml-dashboard/docker
 
 cat > .env.oci << 'EOF'
 ADB_USERNAME=your_adb_username
@@ -60,8 +63,8 @@ The `docker/` directory contains:
 The initial container topology:
 
 - **Service `app`**:
-  - Next.js frontend (and Next.js API routes) on port `3000`.
-  - Express churn API server on port `3001` (optional external exposure).
+  - Next.js frontend (and Next.js API routes) exposed on host port `4000` (container port `3000`).
+  - Express churn API server exposed on host port `4001` (container port `3001`, optional external exposure).
   - Oracle Instant Client + wallet via a mounted volume.
 
 ---
@@ -86,17 +89,13 @@ The initial container topology:
 
 ### 4. Build and Run with podman-compose
 
-From `~/compose/demo/ecommerce-churn-ml-dashboard`:
+From `~/compose/demo/ecommerce-churn-ml-dashboard/docker`:
 
 ```bash
-cd ~/compose/demo/ecommerce-churn-ml-dashboard
+cd ~/compose/demo/ecommerce-churn-ml-dashboard/docker
 
-set -a
-source .env.oci
-set +a
-
-podman-compose -f docker/podman-compose.yml build app
-podman-compose -f docker/podman-compose.yml up -d app
+podman-compose -f podman-compose.yml build app
+podman-compose -f podman-compose.yml up -d app
 ```
 
 What this does:
@@ -106,16 +105,16 @@ What this does:
 
 You should then be able to reach (assuming security rules allow it):
 
-- `http://YOUR_VM_IP:3000` → Next.js UI.
-- `http://YOUR_VM_IP:3001/api/kpi/churn/summary` → Express churn API (if port 3001 is exposed).
+- `http://YOUR_VM_IP:4000` → Next.js UI.
+- `http://YOUR_VM_IP:4001/api/kpi/churn/summary` → Express churn API (if port 4001 is exposed).
 
 For development / troubleshooting, you can also use SSH port forwarding instead of opening ports:
 
 ```bash
-ssh -L 3000:localhost:3000 ubuntu@YOUR_VM_IP
+ssh -L 4000:localhost:4000 ubuntu@YOUR_VM_IP
 ```
 
-Then visit `http://localhost:3000` from your laptop.
+Then visit `http://localhost:4000` from your laptop.
 
 ---
 
@@ -129,12 +128,9 @@ ssh ubuntu@YOUR_VM_IP
 cd ~/compose/demo/ecommerce-churn-ml-dashboard
 git pull origin main    # or your feature branch
 
-set -a
-source .env.oci
-set +a
-
-podman-compose -f docker/podman-compose.yml build app
-podman-compose -f docker/podman-compose.yml up -d app
+cd docker
+podman-compose -f podman-compose.yml build app
+podman-compose -f podman-compose.yml up -d app
 ```
 
 Podman will reuse layers where possible; `up -d` recreates the container with the new image.
@@ -149,13 +145,13 @@ Assuming:
 
 - Caddy is running on the VM host (not in a container).
 - You want to expose the app at `https://YOUR_VM_IP.nip.io` (or another hostname).
-- The `app` container is listening on `localhost:3000` from the VM’s perspective.
+- The `app` container is listening on `localhost:4000` from the VM’s perspective (host port mapped to container port 3000).
 
 Add a site block to your `Caddyfile` (example):
 
 ```caddyfile
 YOUR_VM_IP.nip.io {
-  reverse_proxy 127.0.0.1:3000
+  reverse_proxy 127.0.0.1:4000
 }
 ```
 
@@ -168,7 +164,7 @@ sudo systemctl reload caddy
 Once this is wired:
 
 - External users hit `https://YOUR_VM_IP.nip.io`.
-- Caddy terminates TLS and proxies to the `app` container on `localhost:3000`.
+- Caddy terminates TLS and proxies to the `app` container on `localhost:4000`.
 
 If later you decide to run Caddy as a container as well, you can extend `docker/podman-compose.yml` with a `caddy` service and share a network with the `app` service.
 

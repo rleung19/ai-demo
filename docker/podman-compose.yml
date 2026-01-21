@@ -9,8 +9,8 @@ services:
     container_name: ecommerce-churn-ml-dashboard-app
     restart: unless-stopped
     ports:
-      - "3000:3000"   # Next.js
-      - "3001:3001"   # Express churn API (optional external exposure)
+      - "4000:3000"   # Next.js exposed on host 4000
+      - "4001:3001"   # Express churn API exposed on host 4001
     environment:
       NODE_ENV: "production"
       ADB_USERNAME: "${ADB_USERNAME}"
@@ -18,7 +18,10 @@ services:
       ADB_CONNECTION_STRING: "${ADB_CONNECTION_STRING}"
       TNS_ADMIN: "/opt/oracle/wallet"
       ADB_WALLET_PATH: "/opt/oracle/wallet"
-      NEXT_PUBLIC_API_URL: "http://localhost:3001"
+      # This URL is what the browser uses; it should match the exposed API port on the host
+      NEXT_PUBLIC_API_URL: "http://localhost:4001"
+    env_file:
+      - .env.oci
     volumes:
       - /home/ubuntu/compose/demo/ecommerce-churn-ml-dashboard/wallets/Wallet_XXXX:/opt/oracle/wallet:ro
 

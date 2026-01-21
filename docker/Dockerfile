@@ -21,6 +21,7 @@ RUN npm ci --omit=dev
 COPY --from=builder /app ./
 
 ENV NODE_ENV=production
+# Internal container ports (mapped to 4000/4001 on the host via podman-compose)
 EXPOSE 3000 3001
 
 CMD ["npm", "run", "start-all"]

@@ -42,3 +42,6 @@ next-env.d.ts
 
 # IDE
 .cursor/
+
+# Oracle ADB wallet directory (created on OCI VM inside project root)
+wallets/
