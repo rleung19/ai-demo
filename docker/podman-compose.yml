@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  app:
+    image: ecommerce-churn-ml-dashboard:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: ecommerce-churn-ml-dashboard-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"   # Next.js
+      - "3001:3001"   # Express churn API (optional external exposure)
+    environment:
+      NODE_ENV: "production"
+      ADB_USERNAME: "${ADB_USERNAME}"
+      ADB_PASSWORD: "${ADB_PASSWORD}"
+      ADB_CONNECTION_STRING: "${ADB_CONNECTION_STRING}"
+      TNS_ADMIN: "/opt/oracle/wallet"
+      ADB_WALLET_PATH: "/opt/oracle/wallet"
+      NEXT_PUBLIC_API_URL: "http://localhost:3001"
+    volumes:
+      - /home/ubuntu/compose/demo/ecommerce-churn-ml-dashboard/wallets/Wallet_XXXX:/opt/oracle/wallet:ro
+
