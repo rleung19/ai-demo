@@ -10,10 +10,19 @@ RUN npm run build
 FROM node:20-bullseye
 WORKDIR /app
 
-# TODO: Install Oracle Instant Client in this image and set LD_LIBRARY_PATH appropriately.
-# Example (pseudo-steps, to be filled in with your preferred install method):
-# COPY instantclient_23_3 /opt/oracle/instantclient_23_3
-# ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_23_3:${LD_LIBRARY_PATH}
+# Install Oracle Instant Client into the image.
+# Prerequisite: download the Instant Client basic package and unpack it into
+# an `instantclient_23_3` directory at the project root (same level as `app/`,
+# `docker/`, etc.) before running `podman-compose build`.
+#
+# The build context for this Dockerfile is the project root (`..` in podman-compose),
+# so this COPY brings that directory into the image at /opt/oracle/instantclient_23_3.
+COPY instantclient_23_3 /opt/oracle/instantclient_23_3
+
+# Ensure Oracle libraries are on the dynamic linker path and advertise the
+# library directory to the app via ORACLE_CLIENT_LIB_DIR (used by app/lib/db/oracle.ts).
+ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_23_3:${LD_LIBRARY_PATH}
+ENV ORACLE_CLIENT_LIB_DIR=/opt/oracle/instantclient_23_3
 
 COPY package*.json ./
 RUN npm ci --omit=dev
