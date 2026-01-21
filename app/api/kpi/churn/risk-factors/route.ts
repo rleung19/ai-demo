@@ -261,7 +261,6 @@ export async function GET() {
         primarySegment: row!.PRIMARY_SEGMENT || 'All segments',
       }))
       .sort((a, b) => {
-      .sort((a, b) => {
         // Sort by impact score (highest first)
         const scoreA = parseFloat(a.impactScore.replace('%', ''));
         const scoreB = parseFloat(b.impactScore.replace('%', ''));

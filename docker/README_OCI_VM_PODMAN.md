@@ -31,12 +31,21 @@ git clone https://github.com/rleung19/ai-demo.git .
 # Create a wallets directory inside the project (this path is in .gitignore)
 mkdir -p wallets/Wallet_XXXX
 
-# (Optional but recommended for OCI container runs)
-# Download and unpack the Oracle Instant Client basic package into
-# an `instantclient_23_3` directory at the project root so the Dockerfile
-# can COPY it into the image at /opt/oracle/instantclient_23_3:
+# REQUIRED: Download and unpack the Oracle Instant Client basic package into
+# an `instantclient_23_3` directory at the project root. The Dockerfile
+# COPY command will fail if this directory doesn't exist.
 #
-#   ~/compose/demo/ecommerce-churn-ml-dashboard/instantclient_23_3
+# Steps:
+#   1. Download instantclient-basic-linux.x64-23.3*.zip from Oracle
+#   2. Copy it to the VM (e.g., via scp)
+#   3. Unzip it into instantclient_23_3/:
+#      unzip instantclient-basic-linux.x64-23.3*.zip -d instantclient_23_3
+#
+# Final structure should be:
+#   ~/compose/demo/ecommerce-churn-ml-dashboard/instantclient_23_3/
+#     libclntsh.so
+#     libocci.so
+#     ... (other Instant Client files)
 ```
 
 Copy your **Oracle ADB wallet** from your Mac to the VM, for example into:
