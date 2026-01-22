@@ -85,3 +85,20 @@
 - [x] 7.4 Update README with setup instructions
 - [x] 7.5 Document ADB wallet setup and connection process
 - [x] 7.6 Create troubleshooting guide for common issues
+
+## 8. OCI Deployment
+- [x] 8.1 Create Dockerfile for containerized deployment
+- [x] 8.2 Create podman-compose.yml configuration
+- [x] 8.3 Configure Oracle Instant Client in Docker image
+- [x] 8.4 Set up wallet volume mounting in compose file
+- [x] 8.5 Configure environment variables for OCI deployment
+- [x] 8.6 Create OCI deployment documentation (README_OCI_VM_PODMAN.md)
+- [x] 8.7 Document Oracle Instant Client installation process
+- [x] 8.8 Document wallet setup and mounting
+- [x] 8.9 Document Caddy reverse proxy configuration
+- [x] 8.10 Add troubleshooting section for common deployment issues
+- [x] 8.11 Test container build process
+- [ ] 8.12 Test deployment on OCI VM (end-to-end)
+- [ ] 8.13 Verify Oracle connection from container
+- [ ] 8.14 Test API endpoints from deployed container
+- [ ] 8.15 Verify Caddy reverse proxy routing

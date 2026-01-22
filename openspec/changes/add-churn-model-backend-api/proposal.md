@@ -10,6 +10,7 @@ KPI #1 (Churn Risk Score) currently displays static synthetic data. To demonstra
 - **REST API Endpoints**: Endpoints serving KPI #1 metrics (at-risk customers, risk scores, cohort breakdown, LTV at risk)
 - **Frontend Integration**: Replace static synthetic data with API calls to backend
 - **Model Management**: Model versioning, performance tracking, and deployment automation
+- **OCI Deployment**: Containerized deployment on OCI VM using Podman, with Caddy reverse proxy integration
 
 ## Impact
 - **New Capability**: `churn-model-api` - Backend API for churn model predictions
@@ -19,8 +20,11 @@ KPI #1 (Churn Risk Score) currently displays static synthetic data. To demonstra
   - ML pipeline scripts (Python with OML4Py)
   - API route handlers
   - Database connection utilities
+  - Docker deployment files (`docker/Dockerfile`, `docker/podman-compose.yml`)
+  - OCI deployment documentation (`docker/README_OCI_VM_PODMAN.md`)
 - **Modified Code**:
   - `app/data/kpis/index.ts` - Replace static data with API calls
   - `app/data/synthetic/kpi1-churn-risk.ts` - Keep as fallback
   - `app/page.tsx` - Add API integration
 - **New Dependencies**: Backend framework, Oracle database client, OML4Py
+- **New Infrastructure**: OCI VM deployment with Podman containers, Caddy reverse proxy
