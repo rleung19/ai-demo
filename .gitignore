@@ -45,3 +45,5 @@ next-env.d.ts
 
 # Oracle ADB wallet directory (created on OCI VM inside project root)
 wallets/
+
+.oci/
