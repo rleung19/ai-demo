@@ -65,8 +65,17 @@ cat > .env.oci << 'EOF'
 ADB_USERNAME=your_adb_username
 ADB_PASSWORD=your_adb_password
 ADB_CONNECTION_STRING=your_tns_alias
+
+# OCI Model Deployment Endpoints (for recommender APIs)
+# Obtain these from your OCI Data Science Notebook deployment cells
+# Format: https://modeldeployment.{region}.oci.customer-oci.com/ocid1.datasciencemodeldeployment.oc1.{region}.{id}
+# Do NOT include the /predict suffix
+OCI_PRODUCT_RECOMMENDER_MODEL_ENDPOINT=https://modeldeployment.us-chicago-1.oci.customer-oci.com/ocid1.datasciencemodeldeployment.oc1.us-chicago-1.abc123xyz
+OCI_BASKET_RECOMMENDER_MODEL_ENDPOINT=https://modeldeployment.us-chicago-1.oci.customer-oci.com/ocid1.datasciencemodeldeployment.oc1.us-chicago-1.def456uvw
 EOF
 ```
+
+See `docker/.env.oci.example` for a template with detailed comments.
 
 ---
 
@@ -106,6 +115,96 @@ The initial container topology:
 
 ---
 
+### 3.5 OCI Model Deployment Configuration
+
+The recommender APIs (`/api/recommender/product` and `/api/recommender/basket`) require OCI authentication to call the deployed model endpoints. The container uses a **project-local `.oci` directory** (sibling to `wallets/`) that is mounted into the container.
+
+#### Setup OCI Config and API Key
+
+On the VM, create the `.oci` directory in the project root:
+
+```bash
+cd ~/compose/demo/oracle-demo-ecomm
+
+# Create .oci directory (sibling to wallets/)
+mkdir -p .oci
+
+# Create OCI config file
+cat > .oci/config << 'EOF'
+[DEFAULT]
+user=ocid1.user.oc1..aaaaaaa...
+fingerprint=aa:bb:cc:dd:ee:ff:11:22:33:44:55:66:77:88:99:aa
+tenancy=ocid1.tenancy.oc1..aaaaaaa...
+region=us-chicago-1
+key_file=/root/.oci/oci_api_key.pem
+pass_phrase=your_api_key_passphrase_if_any
+EOF
+
+# Copy your OCI API private key to .oci/oci_api_key.pem
+# (You can generate this key pair in OCI Console: Identity > Users > API Keys)
+cp /path/to/your/oci_api_key.pem .oci/oci_api_key.pem
+
+# Set appropriate permissions
+chmod 600 .oci/config
+chmod 600 .oci/oci_api_key.pem
+```
+
+**Important**: The `key_file` path in the config must be `/root/.oci/oci_api_key.pem` (the container path), not the host path.
+
+#### Obtain Model Deployment Endpoint URLs
+
+1. Open your OCI Data Science Notebook session where you deployed the models.
+2. For the **Product Recommender** (from `Recommender-2.ipynb`):
+   - Find the cell that calls `deployment.predict(...)` or shows the deployment URL.
+   - Copy the base URL (without `/predict` suffix).
+   - Example: `https://modeldeployment.us-chicago-1.oci.customer-oci.com/ocid1.datasciencemodeldeployment.oc1.us-chicago-1.abc123xyz`
+3. For the **Basket Recommender** (from `Basket-2.ipynb`):
+   - Similarly, find the deployment URL from the notebook.
+   - Copy the base URL (without `/predict` suffix).
+
+Add these URLs to `docker/.env.oci`:
+
+```bash
+OCI_PRODUCT_RECOMMENDER_MODEL_ENDPOINT=https://modeldeployment.us-chicago-1.oci.customer-oci.com/ocid1.datasciencemodeldeployment.oc1.us-chicago-1.abc123xyz
+OCI_BASKET_RECOMMENDER_MODEL_ENDPOINT=https://modeldeployment.us-chicago-1.oci.customer-oci.com/ocid1.datasciencemodeldeployment.oc1.us-chicago-1.def456uvw
+```
+
+The `podman-compose.yml` mounts `../.oci` (project-local) to `/root/.oci` in the container (read-only), so the OCI SDK can read the config and API key from inside the container.
+
+#### Troubleshooting OCI Authentication
+
+If the recommender APIs return `503 OCI service error`:
+
+1. **Verify config file exists and is readable**:
+   ```bash
+   ls -la ~/compose/demo/oracle-demo-ecomm/.oci/config
+   cat ~/compose/demo/oracle-demo-ecomm/.oci/config
+   ```
+
+2. **Verify API key file exists and permissions**:
+   ```bash
+   ls -la ~/compose/demo/oracle-demo-ecomm/.oci/oci_api_key.pem
+   # Should show -rw------- (600)
+   ```
+
+3. **Verify volume mount is working** (check container logs):
+   ```bash
+   podman logs ecomm | grep -i oci
+   # Or exec into container:
+   podman exec -it ecomm ls -la /root/.oci
+   ```
+
+4. **Verify endpoint URLs are correct**:
+   - Check that the URLs in `.env.oci` match the deployment URLs from your notebooks.
+   - Ensure they don't include the `/predict` suffix.
+   - Test the endpoint directly (from the VM) using `curl` with OCI authentication if needed.
+
+5. **Check OCI API key permissions**:
+   - Ensure the API key user has permissions to invoke the model deployment endpoints.
+   - Verify the key hasn't expired or been revoked in OCI Console.
+
+---
+
 ### 4. Build and Run with podman-compose
 
 From `~/compose/demo/oracle-demo-ecomm/docker`:
@@ -126,6 +225,8 @@ You should then be able to reach (assuming security rules allow it):
 
 - `http://YOUR_VM_IP:3002` → Next.js UI.
 - `http://YOUR_VM_IP:3003/api/kpi/churn/summary` → Express churn API (if port 3003 is exposed).
+- `http://YOUR_VM_IP:3003/api/recommender/product` → Product recommender API (POST with `{"user_id": "...", "top_k": 5}`).
+- `http://YOUR_VM_IP:3003/api/recommender/basket` → Basket recommender API (POST with `{"basket": ["B01CG1J7XG", ...], "top_n": 3}`).
 
 **Note**: The container is configured with `NEXT_PUBLIC_API_URL=https://ecomm.40b5c371.nip.io`, which means the frontend will make API calls to this URL. Ensure your Caddy reverse proxy is configured to route this domain to the container (see Section 6).
 

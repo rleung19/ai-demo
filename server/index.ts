@@ -26,6 +26,8 @@ import churnCohortsRoutes from './routes/churn/cohorts';
 import churnMetricsRoutes from './routes/churn/metrics';
 import churnChartDataRoutes from './routes/churn/chart-data';
 import churnRiskFactorsRoutes from './routes/churn/risk-factors';
+import productRecommenderRoutes from './routes/recommender/product';
+import basketRecommenderRoutes from './routes/recommender/basket';
 import { churnOpenApiSpec } from './openapi';
 
 // Import database utilities
@@ -64,6 +66,8 @@ app.use('/api/kpi/churn/cohorts', churnCohortsRoutes);
 app.use('/api/kpi/churn/metrics', churnMetricsRoutes);
 app.use('/api/kpi/churn/chart-data', churnChartDataRoutes);
 app.use('/api/kpi/churn/risk-factors', churnRiskFactorsRoutes);
+app.use('/api/recommender/product', productRecommenderRoutes);
+app.use('/api/recommender/basket', basketRecommenderRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -77,6 +81,8 @@ app.get('/', (req, res) => {
       metrics: '/api/kpi/churn/metrics',
       chartData: '/api/kpi/churn/chart-data',
       riskFactors: '/api/kpi/churn/risk-factors',
+      productRecommender: '/api/recommender/product',
+      basketRecommender: '/api/recommender/basket',
     },
   });
 });

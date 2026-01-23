@@ -20,8 +20,11 @@ services:
       ADB_CONNECTION_STRING: "${ADB_CONNECTION_STRING}"
       TNS_ADMIN: "/opt/oracle/wallet"
       ADB_WALLET_PATH: "/opt/oracle/wallet"
+      OCI_PRODUCT_RECOMMENDER_MODEL_ENDPOINT: "${OCI_PRODUCT_RECOMMENDER_MODEL_ENDPOINT}"
+      OCI_BASKET_RECOMMENDER_MODEL_ENDPOINT: "${OCI_BASKET_RECOMMENDER_MODEL_ENDPOINT}"
       # This URL is what the browser uses; it should match the exposed API port on the host
       NEXT_PUBLIC_API_URL: "https://ecomm.40b5c371.nip.io"
     volumes:
       - ../wallets/Wallet_HHZJ2H81DDJWN1DM:/opt/oracle/wallet:ro
+      - ../.oci:/root/.oci:ro
 

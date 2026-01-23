@@ -1,78 +1,78 @@
 # Implementation Tasks
 
 ## 1. Dependencies & Setup
-- [ ] 1.1 Install OCI SDK packages (`oci-sdk`, `oci-common`) in `package.json`
-- [ ] 1.2 Verify OCI config file exists at `~/.oci/config` (or document setup requirements)
-- [ ] 1.3 Add `OCI_MODEL_DEPLOYMENT_ENDPOINT` and `OCI_BASKET_MODEL_DEPLOYMENT_ENDPOINT` to `.env.example` with documentation
-- [ ] 1.4 Document OCI authentication setup process (for both product and basket recommenders)
- - [ ] 1.5 Propagate new descriptive env var names (`OCI_PRODUCT_RECOMMENDER_MODEL_ENDPOINT`, `OCI_BASKET_RECOMMENDER_MODEL_ENDPOINT`) into all affected files when implementing (server config, `docker/podman-compose.yml`, `.env.example`, `.env.oci`)
+- [x] 1.1 Install OCI SDK packages (`oci-sdk`) in `package.json` (Note: implemented custom signing for Node.js 22 compatibility)
+- [x] 1.2 Verify OCI config file exists at `.oci/config` or `~/.oci/config` (with automatic detection)
+- [x] 1.3 Add `OCI_PRODUCT_RECOMMENDER_MODEL_ENDPOINT` and `OCI_BASKET_RECOMMENDER_MODEL_ENDPOINT` to `.env.example` with documentation
+- [x] 1.4 Document OCI authentication setup process (for both product and basket recommenders)
+- [x] 1.5 Propagate new descriptive env var names (`OCI_PRODUCT_RECOMMENDER_MODEL_ENDPOINT`, `OCI_BASKET_RECOMMENDER_MODEL_ENDPOINT`) into all affected files when implementing (server config, `docker/podman-compose.yml`, `.env.example`, `.env.oci`)
 
 ## 2. OCI Model Deployment API Client
-- [ ] 2.1 Create `server/lib/oci/model-deployment.ts` utility
-- [ ] 2.2 Implement OCI signer initialization from config file
-- [ ] 2.3 Implement `predictUserRecs()` function to call product recommender OCI Model Deployment endpoint
-- [ ] 2.4 Implement `predictBasketRecs()` function to call basket recommender OCI Model Deployment endpoint
-- [ ] 2.5 Implement `testConnection()` function for health checks (configurable per endpoint)
-- [ ] 2.6 Add error handling for OCI authentication failures
-- [ ] 2.7 Add error handling for OCI API call failures
+- [x] 2.1 Create `server/lib/oci/model-deployment.ts` utility
+- [x] 2.2 Implement OCI signer initialization from config file
+- [x] 2.3 Implement `predictUserRecs()` function to call product recommender OCI Model Deployment endpoint
+- [x] 2.4 Implement `predictBasketRecs()` function to call basket recommender OCI Model Deployment endpoint
+- [x] 2.5 Implement `testConnection()` function for health checks (configurable per endpoint)
+- [x] 2.6 Add error handling for OCI authentication failures
+- [x] 2.7 Add error handling for OCI API call failures
 
 ## 3. User-Based Recommender API Route
-- [ ] 3.1 Create `server/routes/recommender/product.ts` route handler
-- [ ] 3.2 Implement POST endpoint with request validation (`user_id` required, `top_k` optional)
-- [ ] 3.3 Implement GET endpoint with query parameter support (convenience)
-- [ ] 3.4 Integrate response caching (5-minute TTL using existing cache utility)
-- [ ] 3.5 Add request validation (user_id required, top_k between 1-100)
-- [ ] 3.6 Add error handling for missing endpoint configuration
-- [ ] 3.7 Add error handling for OCI service errors
-- [ ] 3.8 Return standardized error responses matching existing API patterns
+- [x] 3.1 Create `server/routes/recommender/product.ts` route handler
+- [x] 3.2 Implement POST endpoint with request validation (`user_id` required, `top_k` optional)
+- [x] 3.3 Implement GET endpoint with query parameter support (convenience)
+- [x] 3.4 Integrate response caching (5-minute TTL using existing cache utility)
+- [x] 3.5 Add request validation (user_id required, top_k between 1-100)
+- [x] 3.6 Add error handling for missing endpoint configuration
+- [x] 3.7 Add error handling for OCI service errors
+- [x] 3.8 Return standardized error responses matching existing API patterns
 
 ## 4. Basket Recommender API Route
-- [ ] 4.1 Create `server/routes/recommender/basket.ts` route handler
-- [ ] 4.2 Implement POST endpoint with request validation (`basket` array of product IDs required, `top_n` optional)
-- [ ] 4.3 Transform basket payload into OCI Model Deployment request format (`{\"data\": [[...product_ids...]]}`)
-- [ ] 4.4 Map OCI response (`prediction` structure) into simplified JSON with `recommendations` array
-- [ ] 4.5 Integrate response caching (5-minute TTL using existing cache utility)
-- [ ] 4.6 Add error handling for missing basket endpoint configuration
-- [ ] 4.7 Add error handling for OCI service errors (including invalid model responses)
-- [ ] 4.8 Return standardized error responses matching existing API patterns
+- [x] 4.1 Create `server/routes/recommender/basket.ts` route handler
+- [x] 4.2 Implement POST endpoint with request validation (`basket` array of product IDs required, `top_n` optional)
+- [x] 4.3 Transform basket payload into OCI Model Deployment request format (`{\"data\": [[...product_ids...]]}`)
+- [x] 4.4 Map OCI response (`prediction` structure) into simplified JSON with `recommendations` array
+- [x] 4.5 Integrate response caching (5-minute TTL using existing cache utility)
+- [x] 4.6 Add error handling for missing basket endpoint configuration
+- [x] 4.7 Add error handling for OCI service errors (including invalid model responses)
+- [x] 4.8 Return standardized error responses matching existing API patterns
 
 ## 5. Server Integration
-- [ ] 5.1 Update `server/index.ts` to import recommender routes
-- [ ] 5.2 Register `/api/recommender/product` and `/api/recommender/basket` routes in Express app
-- [ ] 5.3 Update root endpoint documentation to include recommender endpoints
-- [ ] 5.4 Test route registration and middleware chain
+- [x] 5.1 Update `server/index.ts` to import recommender routes
+- [x] 5.2 Register `/api/recommender/product` and `/api/recommender/basket` routes in Express app
+- [x] 5.3 Update root endpoint documentation to include recommender endpoints
+- [x] 5.4 Test route registration and middleware chain
 
 ## 6. Testing & Validation
-- [ ] 6.1 Test OCI authentication with valid config file
-- [ ] 6.2 Test user-based prediction endpoint with valid user_id
+- [x] 6.1 Test OCI authentication with valid config file (custom RSA-SHA256 signing implemented)
+- [x] 6.2 Test user-based prediction endpoint with valid user_id (✓ user 100773 returned 5 recommendations)
 - [ ] 6.3 Test user-based prediction endpoint with invalid user_id (no recommendations)
 - [ ] 6.4 Test user-based request validation (missing user_id, invalid top_k)
-- [ ] 6.5 Test basket prediction endpoint with valid basket (matches notebook test case)
+- [x] 6.5 Test basket prediction endpoint with valid basket (✓ matches notebook test case with 3 rules)
 - [ ] 6.6 Test basket prediction endpoint with empty or malformed basket
-- [ ] 6.7 Test basket payload/response mapping against notebook examples
+- [x] 6.7 Test basket payload/response mapping against notebook examples (✓ confidence and lift values correct)
 - [ ] 6.8 Test error handling (missing endpoint config, OCI auth failure, OCI 4xx/5xx)
 - [ ] 6.9 Test response caching (verify cache hit on second request for both endpoints)
-- [ ] 6.10 Test GET endpoint convenience method (user-based)
-- [ ] 6.11 Test with actual OCI Model Deployment endpoints (end-to-end for both models)
+- [x] 6.10 Test GET endpoint convenience method (user-based) (✓ query parameters working)
+- [x] 6.11 Test with actual OCI Model Deployment endpoints (end-to-end for both models) (✓ both APIs working in production)
 
 ## 7. OCI VM Deployment (Podman)
-- [ ] 7.1 Add OCI SDK dependencies (`oci-sdk`, `oci-common`) to `package.json` dependencies (not devDependencies, needed at runtime)
-- [ ] 7.2 Update `docker/podman-compose.yml`:
+- [x] 7.1 Add OCI SDK dependencies (`oci-sdk`, `oci-common`) to `package.json` dependencies (not devDependencies, needed at runtime)
+- [x] 7.2 Update `docker/podman-compose.yml`:
   - Add new environment variables:
-    - `OCI_MODEL_DEPLOYMENT_ENDPOINT` (product recommender endpoint URL)
-    - `OCI_BASKET_MODEL_DEPLOYMENT_ENDPOINT` (basket recommender endpoint URL)
+    - `OCI_PRODUCT_RECOMMENDER_MODEL_ENDPOINT` (product recommender endpoint URL)
+    - `OCI_BASKET_RECOMMENDER_MODEL_ENDPOINT` (basket recommender endpoint URL)
   - Add volume mount for OCI config directory (project-local, sibling to `wallets/`):
     - Mount `../.oci` from project root to `/root/.oci` in container (read-only)
     - Ensure OCI config file and API key are accessible from container (both under `.oci/`)
-- [ ] 7.3 Update `docker/.env.oci.example` (or create if missing) with OCI Model Deployment endpoint variables:
-  - `OCI_MODEL_DEPLOYMENT_ENDPOINT` (example URL format)
-  - `OCI_BASKET_MODEL_DEPLOYMENT_ENDPOINT` (example URL format)
-- [ ] 7.4 Document OCI config file setup on VM in `docker/README_OCI_VM_PODMAN.md`:
-  - Create `~/.oci/config` file on the VM with OCI credentials (tenancy, user, fingerprint, key_file, pass_phrase)
-  - Create `~/.oci/oci_api_key.pem` file with OCI API private key
+- [x] 7.3 Update `docker/.env.oci.example` (or create if missing) with OCI Model Deployment endpoint variables:
+  - `OCI_PRODUCT_RECOMMENDER_MODEL_ENDPOINT` (example URL format)
+  - `OCI_BASKET_RECOMMENDER_MODEL_ENDPOINT` (example URL format)
+- [x] 7.4 Document OCI config file setup on VM in `docker/README_OCI_VM_PODMAN.md`:
+  - Create `./.oci/config` file in project root (sibling to `wallets/`) with OCI credentials (tenancy, user, fingerprint, key_file, pass_phrase)
+  - Create `./.oci/oci_api_key.pem` file with OCI API private key
   - Ensure both files are readable by the user running Podman
   - Document how to generate OCI API key and config file if needed (link to OCI documentation)
-- [ ] 7.5 Update `docker/README_OCI_VM_PODMAN.md` with recommender API deployment steps:
+- [x] 7.5 Update `docker/README_OCI_VM_PODMAN.md` with recommender API deployment steps:
   - Add section "OCI Model Deployment Configuration" explaining:
     - How to obtain endpoint URLs from OCI Data Science deployments (from notebook deployment cells)
     - How to set up `~/.oci/config` file and API key
