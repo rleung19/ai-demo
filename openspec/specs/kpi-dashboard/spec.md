@@ -13,15 +13,14 @@ Each KPI SHALL display:
 - Quantified business impact ranges
 - Root cause analysis for predictive signals
 
+**Note**: For KPI #1 (Churn Risk Score), metrics and visualizations SHALL be populated from REST API endpoints when available, with static synthetic data as fallback.
+
 #### Scenario: Open KPI detail modal from dashboard
 - **WHEN** user clicks on a KPI card or "View Details" button on the main dashboard
 - **THEN** a modal overlay appears with the KPI detail page
 - **AND** the modal displays the KPI number badge, title, owner badges, and prediction horizon in the header
 - **AND** the modal body contains all required sections (metrics grid, chart, data table, AI info, actions, impact)
-
-#### Scenario: Close KPI detail modal
-- **WHEN** user clicks the close button, presses ESC key, or clicks outside the modal
-- **THEN** the modal closes and returns focus to the main dashboard
+- **AND** for KPI #1, if API is available, data is fetched from churn API endpoints; otherwise static data is used
 
 ### Requirement: Modal Header
 Each KPI detail modal SHALL include a header section with:
@@ -189,4 +188,27 @@ The system SHALL use a consistent color coding system:
 - **WHEN** viewing any KPI detail modal
 - **THEN** color coding follows the specified system
 - **AND** risk indicators, trend arrows, and status badges use appropriate colors
+
+### Requirement: KPI Data Source
+The system SHALL fetch KPI #1 (Churn Risk Score) data from REST API endpoints, with fallback to static synthetic data if API is unavailable.
+
+KPI #1 data SHALL be fetched from:
+- Primary: `GET /api/kpi/churn/summary` for summary metrics
+- Primary: `GET /api/kpi/churn/cohorts` for cohort breakdown
+- Primary: `GET /api/kpi/churn/metrics` for model information
+- Primary: `GET /api/kpi/churn/chart-data` for visualization data
+- Fallback: Static data from `app/data/synthetic/kpi1-churn-risk.ts`
+
+#### Scenario: Load KPI #1 from API
+- **WHEN** dashboard loads or KPI #1 is viewed
+- **THEN** frontend attempts to fetch data from API endpoints
+- **AND** if API responds successfully, frontend uses API data
+- **AND** if API fails or times out, frontend uses static fallback data
+- **AND** loading states are displayed during API calls
+
+#### Scenario: Handle API errors gracefully
+- **WHEN** API request fails (network error, 500, timeout)
+- **THEN** frontend logs error and uses static fallback data
+- **AND** user sees KPI data (from fallback) without error disruption
+- **AND** error is logged for debugging purposes
 
