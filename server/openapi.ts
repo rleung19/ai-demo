@@ -605,10 +605,10 @@ export const churnOpenApiSpec = {
                     description: 'Array of product IDs currently in basket',
                     example: ['B01CG1J7XG', 'B0BKZHSDGP', 'B094H5S3TY'],
                   },
-                  top_k: {
+                  top_n: {
                     type: 'integer',
-                    description: 'Number of recommendations to return (1-100)',
-                    default: 5,
+                    description: 'Number of association rules/recommendations to return (1-100)',
+                    default: 3,
                     minimum: 1,
                     maximum: 100,
                   },
@@ -616,7 +616,7 @@ export const churnOpenApiSpec = {
               },
               example: {
                 basket: ['B01CG1J7XG', 'B0BKZHSDGP', 'B094H5S3TY'],
-                top_k: 3,
+                top_n: 3,
               },
             },
           },
