@@ -16,8 +16,8 @@ import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 
 // Load environment variables
-const envFile = path.join(__dirname, '..', '.env');
-dotenv.config({ path: envFile });
+// Use process.cwd() which is always the project root where node was started
+dotenv.config({ path: path.join(process.cwd(), '.env') });
 
 // Import API routes
 import healthRoutes from './routes/health';
