@@ -590,7 +590,7 @@ export const churnOpenApiSpec = {
     '/api/recommender/basket': {
       post: {
         summary: 'Basket recommendations',
-        description: 'Get product recommendations based on current shopping basket items using association rules.',
+        description: 'Get product recommendations based on current shopping basket items using association rules (market basket analysis).',
         requestBody: {
           required: true,
           content: {
@@ -603,7 +603,7 @@ export const churnOpenApiSpec = {
                     type: 'array',
                     items: { type: 'string' },
                     description: 'Array of product IDs currently in basket',
-                    example: ['46', '41'],
+                    example: ['B01CG1J7XG', 'B0BKZHSDGP', 'B094H5S3TY'],
                   },
                   top_k: {
                     type: 'integer',
@@ -615,15 +615,15 @@ export const churnOpenApiSpec = {
                 },
               },
               example: {
-                basket: ['46', '41'],
-                top_k: 5,
+                basket: ['B01CG1J7XG', 'B0BKZHSDGP', 'B094H5S3TY'],
+                top_k: 3,
               },
             },
           },
         },
         responses: {
           '200': {
-            description: 'Successful recommendations',
+            description: 'Successful recommendations based on association rules',
             content: {
               'application/json': {
                 schema: {
@@ -632,16 +632,31 @@ export const churnOpenApiSpec = {
                     basket: {
                       type: 'array',
                       items: { type: 'string' },
-                      example: ['46', '41'],
+                      description: 'Original basket product IDs',
+                      example: ['B01CG1J7XG', 'B0BKZHSDGP', 'B094H5S3TY'],
                     },
                     recommendations: {
                       type: 'array',
+                      description: 'Recommended product combinations with association metrics',
                       items: {
                         type: 'object',
                         properties: {
-                          product_id: { type: 'string', example: '45', description: 'Recommended product ID' },
-                          confidence: { type: 'number', example: 0.72, description: 'Association rule confidence' },
-                          lift: { type: 'number', example: 1.85, description: 'Association rule lift' },
+                          products: {
+                            type: 'array',
+                            items: { type: 'string' },
+                            description: 'Recommended product ID(s) that go well with basket',
+                            example: ['B07KX2N7TM', 'B0BFPXJ2YD'],
+                          },
+                          confidence: {
+                            type: 'number',
+                            example: 1.0,
+                            description: 'Rule confidence (probability that consequent occurs given antecedent)',
+                          },
+                          lift: {
+                            type: 'number',
+                            example: 19.0,
+                            description: 'Association strength (lift > 1 means positive correlation)',
+                          },
                         },
                       },
                     },
@@ -649,8 +664,24 @@ export const churnOpenApiSpec = {
                   },
                 },
                 example: {
-                  basket: ['46', '41'],
-                  recommendations: [],
+                  basket: ['B01CG1J7XG', 'B0BKZHSDGP', 'B094H5S3TY'],
+                  recommendations: [
+                    {
+                      products: ['B01CG1J7XG', 'B07KX2N7TM', 'B0BFPXJ2YD'],
+                      confidence: 1.0,
+                      lift: 19.0,
+                    },
+                    {
+                      products: ['B07KX2N7TM', 'B094H5S3TY'],
+                      confidence: 1.0,
+                      lift: 19.0,
+                    },
+                    {
+                      products: ['B0BFPXJ2YD', 'B0BKZHSDGP'],
+                      confidence: 1.0,
+                      lift: 19.0,
+                    },
+                  ],
                   message: 'Success',
                 },
               },
