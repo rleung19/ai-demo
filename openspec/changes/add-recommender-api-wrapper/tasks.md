@@ -101,9 +101,22 @@
   - Added `/api/recommender/product` (GET and POST)
   - Added `/api/recommender/basket` (POST)
   - Updated title and description to reflect expanded API scope
-- [ ] 8.2 Document user-based recommender API endpoint in markdown documentation
-- [ ] 8.3 Document basket recommender API endpoint in markdown documentation (including payload and response shape)
-- [ ] 8.4 Document OCI authentication setup requirements (local development and OCI VM)
-- [ ] 8.5 Document environment variable configuration for both endpoints
-- [ ] 8.6 Add example requests/responses based on notebook examples (product and basket)
-- [ ] 8.7 Update README with recommender API usage
+- [x] 8.2 Enhance OpenAPI spec with real sample request/response bodies for ALL endpoints
+  - ✓ Called all KPI/churn endpoints to get actual response samples
+  - ✓ Called recommender endpoints to get actual response samples
+  - ✓ Added comprehensive JSON schemas with real examples for all 9 endpoints:
+    - `/api/health` - Full health check response with database status
+    - `/api/kpi/churn/summary` - Complete summary metrics with LTV
+    - `/api/kpi/churn/cohorts` - 4 cohorts (VIP, Regular, New, Dormant)
+    - `/api/kpi/churn/metrics` - Full model performance metrics
+    - `/api/kpi/churn/chart-data` - Distribution histogram data
+    - `/api/kpi/churn/risk-factors` - Top 5 risk factors with impact scores
+    - `/api/recommender/product` (GET/POST) - Product recommendations with ratings
+    - `/api/recommender/basket` (POST) - Basket recommendations with confidence/lift
+  - ✓ Added proper parameter descriptions, validation rules, and error response schemas
+- [ ] 8.3 Document user-based recommender API endpoint in markdown documentation
+- [ ] 8.4 Document basket recommender API endpoint in markdown documentation (including payload and response shape)
+- [ ] 8.5 Document OCI authentication setup requirements (local development and OCI VM)
+- [ ] 8.6 Document environment variable configuration for both endpoints
+- [ ] 8.7 Add example requests/responses based on notebook examples (product and basket)
+- [ ] 8.8 Update README with recommender API usage
