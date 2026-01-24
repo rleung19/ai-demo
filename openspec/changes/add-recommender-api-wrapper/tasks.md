@@ -97,9 +97,13 @@
   - Verify OCI Model Deployment calls succeed
 
 ## 8. Documentation
-- [ ] 8.1 Document user-based recommender API endpoint in API documentation
-- [ ] 8.2 Document basket recommender API endpoint in API documentation (including payload and response shape)
-- [ ] 8.3 Document OCI authentication setup requirements (local development and OCI VM)
-- [ ] 8.4 Document environment variable configuration for both endpoints
-- [ ] 8.5 Add example requests/responses based on notebook examples (product and basket)
-- [ ] 8.6 Update README with recommender API usage
+- [x] 8.1 Update OpenAPI/Swagger spec (`server/openapi.ts`) with new recommender endpoints
+  - Added `/api/recommender/product` (GET and POST)
+  - Added `/api/recommender/basket` (POST)
+  - Updated title and description to reflect expanded API scope
+- [ ] 8.2 Document user-based recommender API endpoint in markdown documentation
+- [ ] 8.3 Document basket recommender API endpoint in markdown documentation (including payload and response shape)
+- [ ] 8.4 Document OCI authentication setup requirements (local development and OCI VM)
+- [ ] 8.5 Document environment variable configuration for both endpoints
+- [ ] 8.6 Add example requests/responses based on notebook examples (product and basket)
+- [ ] 8.7 Update README with recommender API usage
