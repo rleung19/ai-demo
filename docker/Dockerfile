@@ -11,7 +11,9 @@ ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_23_26:${LD_LIBRARY_PATH}
 ENV ORACLE_CLIENT_LIB_DIR=/opt/oracle/instantclient_23_26
 RUN apt-get update && apt-get install -y libaio1
 
+# Build both Next.js and API server
 RUN npm run build
+RUN npm run server:build
 
 FROM node:20-bullseye
 WORKDIR /app
@@ -38,8 +40,9 @@ COPY --from=builder /app ./
 RUN apt-get update && apt-get install -y libaio1
 
 ENV NODE_ENV=production
-# Internal container ports (mapped to 4000/4001 on the host via podman-compose)
+# Internal container ports (mapped to 3002/3003 on the host via podman-compose)
 EXPOSE 3000 3001
 
-CMD ["npm", "run", "dev:all"]
+# Run both servers in production mode (uses compiled assets from build stage)
+CMD ["npm", "run", "start:all"]
 

@@ -12,6 +12,7 @@
     "build": "next build",
     "start": "next start",
     "start:oracle": "TNS_ADMIN=${ADB_WALLET_PATH:-${TNS_ADMIN}} next start",
+    "start:all": "./scripts/start-all-prod.sh",
     "lint": "eslint"
   },
   "dependencies": {
