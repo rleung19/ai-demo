@@ -1,26 +1,32 @@
 # Quick Deployment Fix Summary
 
+> **NOTE**: This document was updated after discovering the two-domain architecture. 
+> See **[CADDY_API_FIX.md](./CADDY_API_FIX.md)** for the complete discovery story and final architecture.
+
 ## What Was Fixed
 
 Both **Swagger UI** and **Next.js** were failing to communicate with the API server in Podman because they were using the wrong URLs.
 
 ## Root Cause
 
-Both Next.js and API server run in the **same container**, but:
-- Server-side code (Next.js SSR) should use `http://localhost:3001` (internal)
-- Client-side code (browser) should use `https://ecomm.40b5c371.nip.io` (public)
+Both Next.js and API server run in the **same container**, but Caddy routes them via **separate domains**:
+- `https://ecomm.40b5c371.nip.io` → Next.js frontend (port 3002)
+- `https://ecomm-api.40b5c371.nip.io` → Express API server (port 3003)
 
-Previously, everything used the same `NEXT_PUBLIC_API_URL` for both contexts.
+Client-side code (browser) should use `https://ecomm-api.40b5c371.nip.io` for all API calls.
 
 ## The Fix
 
-### 1. Smart Next.js API Client
-Now detects if code is running on server or client and uses the appropriate URL:
-- **Server-side**: `API_URL=http://localhost:3001`
-- **Client-side**: `NEXT_PUBLIC_API_URL=https://ecomm.40b5c371.nip.io`
+### 1. Configure Frontend to Use Dedicated API Domain
+Frontend now calls the dedicated API domain instead of the Next.js domain:
+- **Client-side (browser)**: `NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io`
+- **Caddy routing**: `ecomm-api.40b5c371.nip.io` → Express API server (port 3003)
 
-### 2. Dynamic OpenAPI Spec
-Swagger UI now uses the public URL when available via `PUBLIC_API_URL` environment variable.
+### 2. Simplified API Client
+Removed unnecessary SSR complexity since frontend uses client-side rendering only (`'use client'`).
+
+### 3. Swagger UI for SSH Access
+Updated OpenAPI spec with `http://localhost:3003` for secure SSH port forwarding access.
 
 ## Deploy to OCI VM
 
@@ -71,9 +77,9 @@ curl http://localhost:3003/api/health
 curl http://localhost:3002
 
 # From browser (public URLs)
-https://ecomm.40b5c371.nip.io                    # Frontend
-https://ecomm.40b5c371.nip.io/api/health         # API
-https://ecomm.40b5c371.nip.io/api-docs           # Swagger UI
+https://ecomm.40b5c371.nip.io                    # Frontend (Next.js)
+https://ecomm-api.40b5c371.nip.io/api/health     # API (Express)
+# Swagger UI: SSH port forward only (http://localhost:3003/api-docs)
 ```
 
 ## Architecture Diagram
@@ -105,12 +111,16 @@ https://ecomm.40b5c371.nip.io/api-docs           # Swagger UI
           └──────────┬───────────────┘
                      │
               Caddy Reverse Proxy
-                     │
-           https://ecomm.40b5c371.nip.io
-                     │
-                   Browser
-                     │
-              (Uses public URLs)
+                   │
+       ┌───────────┴───────────┐
+       │                       │
+ecomm.40b5c371.nip.io   ecomm-api.40b5c371.nip.io
+(Frontend: Port 3002)   (API: Port 3003)
+       │                       │
+       └───────────┬───────────┘
+                   │
+                 Browser
+       (Calls both domains)
 ```
 
 ## Files Changed
@@ -128,21 +138,21 @@ After deployment, verify:
 - [ ] Container is running: `podman ps | grep ecomm`
 - [ ] Logs show both servers started: `podman logs ecomm --tail 50`
 - [ ] Frontend loads: `https://ecomm.40b5c371.nip.io`
-- [ ] API responds: `https://ecomm.40b5c371.nip.io/api/health`
-- [ ] Swagger UI loads: `https://ecomm.40b5c371.nip.io/api-docs`
-- [ ] Swagger "Try it out" works (no CORS errors)
-- [ ] Dashboard loads data (Next.js can call API)
+- [ ] API responds: `https://ecomm-api.40b5c371.nip.io/api/health`
+- [ ] Swagger UI (via SSH): `ssh -L 3003:localhost:3003` then `http://localhost:3003/api-docs`
+- [ ] Swagger "Try it out" works with `localhost:3003` server selected
+- [ ] Dashboard loads data (browser calls ecomm-api domain)
 
 ## Troubleshooting
 
 ### Swagger still shows "Failed to fetch"
 
 ```bash
-# Check PUBLIC_API_URL is set in container
-podman exec ecomm env | grep PUBLIC_API_URL
+# Check NEXT_PUBLIC_API_URL is set in container
+podman exec ecomm env | grep NEXT_PUBLIC_API_URL
 
 # If not found, add to docker/.env.oci on VM:
-echo "PUBLIC_API_URL=https://ecomm.40b5c371.nip.io" >> docker/.env.oci
+echo "NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io" >> docker/.env.oci
 
 # Then rebuild
 podman-compose -f podman-compose.yml down
@@ -181,33 +191,36 @@ sudo journalctl -u caddy -n 30 --no-pager
 ### Before Fix ❌
 
 ```
-Browser → Swagger UI loads
+Browser loads: https://ecomm.40b5c371.nip.io (frontend)
         ↓
-Swagger tries to call: http://localhost:3001
+Frontend tries to call: https://ecomm.40b5c371.nip.io/api/recommender/product
         ↓
-FAILS: Browser can't reach container's localhost
-
-Next.js SSR → Tries to call: https://ecomm.40b5c371.nip.io
+Caddy routes to: Next.js (port 3002)
         ↓
-SLOW: Goes through external network instead of internal
+Next.js looks for: app/api/recommender/product/route.ts
+        ↓
+FAILS: File doesn't exist (only in Express server!)
 ```
 
 ### After Fix ✅
 
 ```
-Browser → Swagger UI loads
+Browser loads: https://ecomm.40b5c371.nip.io (frontend)
         ↓
-Swagger calls: https://ecomm.40b5c371.nip.io/api/*
+Frontend calls: https://ecomm-api.40b5c371.nip.io/api/recommender/product
         ↓
-SUCCESS: Browser reaches public URL → Caddy → Container
+Caddy routes to: Express API (port 3003)
+        ↓
+Express handles: /api/recommender/product
+        ↓
+SUCCESS: Returns recommendations!
 
-Next.js SSR → Calls: http://localhost:3001
+Swagger (via SSH tunnel):
+Browser → http://localhost:3003/api-docs
         ↓
-SUCCESS: Internal container communication (fast!)
-
-Browser → JavaScript calls: https://ecomm.40b5c371.nip.io/api/*
+Swagger calls: http://localhost:3003/api/*
         ↓
-SUCCESS: Public URL works from browser
+SUCCESS: Secure access via SSH port forward
 ```
 
 ---

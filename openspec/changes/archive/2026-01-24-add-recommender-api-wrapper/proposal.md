@@ -320,3 +320,149 @@ dotenv.config({ path: path.join(process.cwd(), '.env') });
 ### Key Dependencies
 - `oci-sdk@^2.107.2` - OCI API client
 - `@types/oracledb@6.10.1` - TypeScript definitions for oracledb
+
+---
+
+## Deployment Configuration Fix (2026-01-25)
+
+### Discovery
+
+After deployment to OCI VM, frontend could not access the new recommender APIs. Investigation revealed:
+
+**Root Cause**: Production uses **two separate domains** routed by Caddy:
+- `ecomm.40b5c371.nip.io` → Next.js frontend (port 3002)  
+- `ecomm-api.40b5c371.nip.io` → Express API server (port 3003)
+
+Frontend was calling `https://ecomm.40b5c371.nip.io/api/recommender/*` which routed to Next.js (port 3002), but recommender APIs only exist in Express (port 3003).
+
+**Before fix**:
+```
+Browser → ecomm domain → Next.js → 404 (recommender routes don't exist in Next.js)
+```
+
+**After fix**:
+```
+Browser → ecomm-api domain → Express → 200 (all APIs including recommender)
+```
+
+### Changes
+
+#### 1. Configure Frontend to Use Dedicated API Domain
+
+**File**: `docker/.env.oci`
+```bash
+NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io
+```
+
+Loaded via `env_file: .env.oci` directive in `podman-compose.yml`.
+
+**Impact**: Browser now calls the dedicated API domain instead of the frontend domain.
+
+#### 2. Consolidate All Environment Variables
+
+**File**: `docker/.env.oci` (complete configuration)
+```bash
+# Frontend API URL
+NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io
+
+# Database credentials
+ADB_USERNAME=...
+ADB_PASSWORD=...
+ADB_CONNECTION_STRING=...
+
+# OCI Model Endpoints
+OCI_PRODUCT_RECOMMENDER_MODEL_ENDPOINT=...
+OCI_BASKET_RECOMMENDER_MODEL_ENDPOINT=...
+
+# Container runtime
+NODE_ENV=production
+TNS_ADMIN=/opt/oracle/wallet
+ADB_WALLET_PATH=/opt/oracle/wallet
+```
+
+**File**: `docker/podman-compose.yml`
+
+Removed `environment:` section - all variables now loaded from `.env.oci` for single-source configuration.
+
+#### 3. Simplify API Client
+
+**File**: `app/lib/api/churn-api.ts`
+
+Removed unnecessary SSR complexity (frontend uses client-side rendering only):
+```typescript
+// Before: Complex server vs client detection
+function getApiBaseUrl() { ... }
+
+// After: Simple configuration
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+```
+
+#### 4. Update OpenAPI for Secure Swagger Access
+
+**File**: `server/openapi.ts`
+
+Updated server URLs for SSH port forwarding access:
+```typescript
+servers: [
+  { url: 'http://localhost:3003', description: 'SSH Port Forward' },
+  { url: 'http://localhost:3001', description: 'Local Development' }
+]
+```
+
+Swagger UI not publicly exposed for security - access via SSH tunnel only.
+
+### Architecture
+
+**Two-Domain Setup** (discovered in Caddy Admin API):
+
+```
+Caddy Reverse Proxy
+├─ ecomm.40b5c371.nip.io → localhost:3002 (Next.js Frontend)
+└─ ecomm-api.40b5c371.nip.io → localhost:3003 (Express API - all endpoints)
+```
+
+**Container Architecture**:
+```
+Container: ecomm
+├─ Next.js (port 3000) → Host:3002 → ecomm domain
+└─ Express (port 3001) → Host:3003 → ecomm-api domain
+```
+
+**Frontend Rendering**: Client-side only (`'use client'` - no SSR)
+- Page loads: `https://ecomm.40b5c371.nip.io`
+- API calls: `https://ecomm-api.40b5c371.nip.io/api/*`
+
+### Documentation Added
+
+- `CADDY_API_FIX.md` - Complete discovery story and architecture details
+- Updated `DEPLOY_FIX_SUMMARY.md` - Quick deployment guide with two-domain setup
+- Updated `FIX_SWAGGER_PODMAN.md` - Added two-domain architecture details
+
+### Testing
+
+**Local Development**: ✅ No changes needed
+- Defaults to `http://localhost:3001`
+- Express runs on port 3001 (from `API_PORT`)
+- Frontend defaults match server port
+
+**Production Deployment**: ✅ Works correctly
+- Frontend: `https://ecomm.40b5c371.nip.io`
+- API: `https://ecomm-api.40b5c371.nip.io/api/*`
+- Swagger: SSH port forward only (`http://localhost:3003/api-docs`)
+
+### Lessons Learned
+
+1. **Caddy Admin API vs Caddyfile**: Running configuration (port 2019) was different from Caddyfile
+2. **Two-Domain Pattern**: Frontend and API served via separate domains for routing flexibility
+3. **Client-Side Rendering**: Frontend uses `'use client'` - no SSR complexity needed
+4. **Configuration Consolidation**: Single `.env.oci` file reduces deployment confusion
+
+---
+
+## Final Status
+
+**Implementation**: ✅ Complete  
+**Local Testing**: ✅ Verified  
+**Production Deployment**: ✅ Working  
+**Documentation**: ✅ Comprehensive  
+**Archived**: 2026-01-24

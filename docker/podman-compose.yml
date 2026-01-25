@@ -15,12 +15,8 @@ services:
       - "3003:3001"   # Express churn API exposed on host 4001
     env_file:
       - .env.oci
-    environment:
-      NODE_ENV: "production"
-      TNS_ADMIN: "/opt/oracle/wallet"
-      ADB_WALLET_PATH: "/opt/oracle/wallet"
-      # Note: All deployment-specific variables (database credentials, OCI endpoints,
-      # and NEXT_PUBLIC_API_URL) are loaded from env_file (.env.oci)
+    # All environment variables are now in .env.oci for single-source configuration
+    # This includes: NODE_ENV, database credentials, OCI endpoints, paths, and API URLs
     volumes:
       - ../wallets/Wallet_HHZJ2H81DDJWN1DM:/opt/oracle/wallet:ro
       - ../.oci:/root/.oci:ro

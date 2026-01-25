@@ -233,3 +233,50 @@ The system SHALL have complete testing coverage and documentation for all modes 
 - Deployment checklists and troubleshooting guides
 
 **Test Results**: All tests pass, system ready for production deployment.
+
+---
+
+## Deployment Configuration (2026-01-25)
+
+### Enhancement: Production Deployment Configuration
+The system SHALL be configured to work with the production two-domain architecture on OCI VM.
+
+**Discovery**: Production environment uses two separate Caddy domains:
+- `ecomm.40b5c371.nip.io` routes to Next.js frontend (port 3002)
+- `ecomm-api.40b5c371.nip.io` routes to Express API server (port 3003)
+
+**Requirements**:
+- Frontend SHALL call dedicated API domain instead of frontend domain
+- All environment variables SHALL be consolidated in single `.env.oci` file
+- Swagger UI SHALL be accessible via SSH port forwarding only (not publicly exposed)
+- Local development SHALL continue to work without changes
+
+**Implementation**:
+- Set `NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io` in `.env.oci`
+- Removed `environment:` section from `podman-compose.yml` (all vars in `.env.oci`)
+- Simplified API client (removed unnecessary SSR complexity)
+- Updated OpenAPI server URLs for SSH access (`http://localhost:3003`)
+- Added documentation: `CADDY_API_FIX.md` (complete discovery story)
+
+#### Scenario: Production deployment
+- **WHEN** container deployed to OCI VM with `.env.oci` configured
+- **THEN** frontend loads from `https://ecomm.40b5c371.nip.io`
+- **AND** frontend makes API calls to `https://ecomm-api.40b5c371.nip.io/api/*`
+- **AND** all APIs (churn + recommender) are accessible
+- **AND** Swagger UI accessible via SSH tunnel only
+
+#### Scenario: Local development
+- **WHEN** running `npm run dev:all` locally
+- **THEN** Next.js runs on `http://localhost:3000`
+- **AND** Express API runs on `http://localhost:3001`
+- **AND** frontend defaults to calling `http://localhost:3001/api/*`
+- **AND** no environment configuration required
+
+**Architecture**:
+```
+Caddy → ecomm.40b5c371.nip.io → localhost:3002 (Next.js)
+Caddy → ecomm-api.40b5c371.nip.io → localhost:3003 (Express API)
+Both services in same container, separate routing domains
+```
+
+**Status**: ✅ Production deployment verified working
