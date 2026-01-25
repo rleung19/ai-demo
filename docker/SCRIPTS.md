@@ -52,8 +52,11 @@ cd ~/compose/demo/oracle-demo-ecomm/docker
 # After changing .env.oci locally
 ./deploy.sh
 
-# View live logs
-podman logs ecomm -f
+# View live logs (note: flags before container name)
+podman logs -f ecomm
+
+# View last 50 lines
+podman logs --tail=50 ecomm
 
 # Check container status
 podman ps
@@ -88,8 +91,8 @@ nano .env.oci
 
 **Container won't start:**
 ```bash
-# Check logs
-podman logs ecomm --tail 50
+# Check logs (note: flags before container name in Podman)
+podman logs --tail=50 ecomm
 
 # Check if port is in use
 sudo lsof -i :3002

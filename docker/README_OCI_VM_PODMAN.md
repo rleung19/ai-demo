@@ -189,7 +189,7 @@ If the recommender APIs return `503 OCI service error`:
 
 3. **Verify volume mount is working** (check container logs):
    ```bash
-   podman logs ecomm | grep -i oci
+   podman logs ecomm | grep -i oci  # Note: pipe works without flags
    # Or exec into container:
    podman exec -it ecomm ls -la /root/.oci
    ```

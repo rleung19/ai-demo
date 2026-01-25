@@ -258,7 +258,7 @@ podman-compose -f podman-compose.yml build --no-cache
 podman-compose -f podman-compose.yml up -d
 
 # 5. Verify logs
-podman logs ecomm --tail 50
+podman logs --tail=50 ecomm
 
 # 4. Test frontend
 curl https://ecomm.40b5c371.nip.io

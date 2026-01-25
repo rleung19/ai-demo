@@ -78,7 +78,7 @@ podman-compose -f podman-compose.yml build --no-cache
 podman-compose -f podman-compose.yml up -d
 
 # 5. Verify logs
-podman logs ecomm --tail 50
+podman logs --tail=50 ecomm
 ```
 
 > **TIP**: See `docker/SCRIPTS.md` for script documentation and troubleshooting.
@@ -169,7 +169,7 @@ ecomm.40b5c371.nip.io   ecomm-api.40b5c371.nip.io
 After deployment, verify:
 
 - [ ] Container is running: `podman ps | grep ecomm`
-- [ ] Logs show both servers started: `podman logs ecomm --tail 50`
+- [ ] Logs show both servers started: `podman logs --tail=50 ecomm`
 - [ ] Frontend loads: `https://ecomm.40b5c371.nip.io`
 - [ ] API responds: `https://ecomm-api.40b5c371.nip.io/api/health`
 - [ ] Swagger UI (via SSH): `ssh -L 3003:localhost:3003` then `http://localhost:3003/api-docs`

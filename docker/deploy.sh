@@ -61,7 +61,7 @@ echo ""
 # Step 5: Show logs
 echo "📄 Recent logs:"
 echo "=========================================="
-podman logs ecomm --tail 30
+podman logs --tail=30 ecomm
 echo "=========================================="
 echo ""
 
@@ -73,6 +73,6 @@ echo "   Frontend:  https://ecomm.40b5c371.nip.io"
 echo "   API:       https://ecomm-api.40b5c371.nip.io/api/health"
 echo "   Swagger:   SSH tunnel → http://localhost:3003/api-docs"
 echo ""
-echo "📊 To view full logs: podman logs ecomm -f"
+echo "📊 To view full logs: podman logs -f ecomm"
 echo "🔍 To check status:   podman ps"
 echo ""

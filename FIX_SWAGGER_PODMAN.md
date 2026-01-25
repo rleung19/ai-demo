@@ -199,7 +199,7 @@ podman-compose -f podman-compose.yml build app
 podman-compose -f podman-compose.yml up -d app
 
 # Verify it's running
-podman logs ecomm --tail 50
+podman logs --tail=50 ecomm
 ```
 
 ### 4. Test Swagger UI (Secure Access via SSH)
