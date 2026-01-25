@@ -35,6 +35,13 @@ echo "📋 Configuration:"
 grep "NEXT_PUBLIC_API_URL=" .env.oci || echo "   NEXT_PUBLIC_API_URL: (not set)"
 echo ""
 
+# Export build-time variables from .env.oci
+# This is required because build.args in podman-compose.yml reads from shell environment
+echo "📤 Exporting build-time variables..."
+export $(grep "^NEXT_PUBLIC_API_URL=" .env.oci | xargs)
+echo "✅ NEXT_PUBLIC_API_URL exported: $NEXT_PUBLIC_API_URL"
+echo ""
+
 # Step 1: Stop existing container
 echo "🛑 Stopping existing container..."
 podman-compose -f podman-compose.yml down

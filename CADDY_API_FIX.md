@@ -252,7 +252,12 @@ echo "NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io" >> .env.oci
 grep NEXT_PUBLIC_API_URL .env.oci
 # CRITICAL: This MUST be set before building!
 
-# 4. Rebuild and restart (use --no-cache to ensure fresh build)
+# 4. Export the variable to shell environment (required for build)
+export $(grep "^NEXT_PUBLIC_API_URL=" .env.oci | xargs)
+# Verify it's exported
+echo $NEXT_PUBLIC_API_URL
+
+# 5. Rebuild and restart (use --no-cache to ensure fresh build)
 podman-compose -f podman-compose.yml down
 podman-compose -f podman-compose.yml build --no-cache
 podman-compose -f podman-compose.yml up -d

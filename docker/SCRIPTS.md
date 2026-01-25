@@ -75,6 +75,8 @@ Both scripts expect:
 - `.env.oci` file exists with required variables
 - `NEXT_PUBLIC_API_URL` is set in `.env.oci`
 
+**Important**: The scripts automatically export `NEXT_PUBLIC_API_URL` from `.env.oci` to the shell environment before building. This is required because Docker/Podman build arguments read from the shell environment, not from the `env_file` directive (which only applies at runtime).
+
 ## Troubleshooting
 
 **Script not executable:**

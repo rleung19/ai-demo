@@ -72,12 +72,16 @@ cd docker
 grep NEXT_PUBLIC_API_URL .env.oci
 # Should show: NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io
 
-# 4. Rebuild and restart (reads .env.oci during build)
+# 4. Export to shell environment (required for build args)
+export $(grep "^NEXT_PUBLIC_API_URL=" .env.oci | xargs)
+echo "Exported: $NEXT_PUBLIC_API_URL"
+
+# 5. Rebuild and restart
 podman-compose -f podman-compose.yml down
 podman-compose -f podman-compose.yml build --no-cache
 podman-compose -f podman-compose.yml up -d
 
-# 5. Verify logs
+# 6. Verify logs
 podman logs --tail=50 ecomm
 ```
 
