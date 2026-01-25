@@ -30,6 +30,18 @@ Updated OpenAPI spec with `http://localhost:3003` for secure SSH port forwarding
 
 ## Deploy to OCI VM
 
+### Prerequisites
+
+**CRITICAL**: `.env.oci` must exist in `docker/` directory with `NEXT_PUBLIC_API_URL` set **before building**:
+
+```bash
+# .env.oci must include (along with other vars):
+NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io
+```
+
+**Why**: `NEXT_PUBLIC_API_URL` is embedded into the Next.js JavaScript bundle at **build time**, not runtime. 
+The build process reads this from `.env.oci` and compiles it into the client-side code.
+
 ### Quick Steps
 
 ```bash
@@ -40,13 +52,17 @@ ssh opc@<vm-ip>
 cd ~/compose/demo/oracle-demo-ecomm
 git pull origin main
 
-# 3. Rebuild and restart
+# 3. Verify .env.oci has build-time variables
 cd docker
-podman-compose -f podman-compose.yml down
-podman-compose -f podman-compose.yml build app
-podman-compose -f podman-compose.yml up -d app
+grep NEXT_PUBLIC_API_URL .env.oci
+# Should show: NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io
 
-# 4. Verify logs
+# 4. Rebuild and restart (reads .env.oci during build)
+podman-compose -f podman-compose.yml down
+podman-compose -f podman-compose.yml build --no-cache
+podman-compose -f podman-compose.yml up -d
+
+# 5. Verify logs
 podman logs ecomm --tail 50
 ```
 

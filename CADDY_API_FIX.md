@@ -127,7 +127,15 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io
 ```
 
-Loaded automatically via `env_file: .env.oci` in `podman-compose.yml`.
+**CRITICAL**: This is a **build-time** variable for Next.js, not runtime!
+
+Next.js embeds `NEXT_PUBLIC_*` variables into the JavaScript bundle during the `npm run build` step. This means:
+- ✅ `.env.oci` must exist **before** building
+- ✅ `podman-compose` reads `.env.oci` and passes it as a build arg
+- ✅ Next.js build embeds the value into the compiled bundle
+- ❌ Changing `.env.oci` after build won't affect the frontend (must rebuild)
+
+Loaded via `env_file: .env.oci` → passed as `build.args` in `podman-compose.yml`.
 
 **What this does**:
 - Frontend now calls `https://ecomm-api.40b5c371.nip.io/api/*`
@@ -240,13 +248,16 @@ cat .env.oci
 # If not, add it:
 echo "NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io" >> .env.oci
 
-# 3. Rebuild and restart
-cd docker
-podman-compose -f podman-compose.yml down
-podman-compose -f podman-compose.yml build app
-podman-compose -f podman-compose.yml up -d app
+# 3. Verify the build-time variable is set
+grep NEXT_PUBLIC_API_URL .env.oci
+# CRITICAL: This MUST be set before building!
 
-# 3. Verify logs
+# 4. Rebuild and restart (use --no-cache to ensure fresh build)
+podman-compose -f podman-compose.yml down
+podman-compose -f podman-compose.yml build --no-cache
+podman-compose -f podman-compose.yml up -d
+
+# 5. Verify logs
 podman logs ecomm --tail 50
 
 # 4. Test frontend
@@ -293,7 +304,26 @@ The frontend uses **client-side rendering only** (`'use client'`):
 - Only `NEXT_PUBLIC_*` variables are accessible
 - No need for `API_URL` or SSR complexity
 
-### 4. Express Was a Backup
+### 4. Build-Time vs Runtime Variables
+
+**CRITICAL DISCOVERY**: `NEXT_PUBLIC_*` variables are **build-time**, not runtime:
+
+```
+❌ WRONG: Change .env.oci → restart container → should work
+✅ CORRECT: Change .env.oci → REBUILD container → restart → works
+```
+
+**Why**: Next.js embeds `NEXT_PUBLIC_*` into the JavaScript bundle during `npm run build`. The compiled bundle is static.
+
+**Impact**: If `.env.oci` is missing `NEXT_PUBLIC_API_URL` during build, the default (`http://localhost:3001`) gets embedded permanently until rebuilt.
+
+**Solution**:
+- Pass as build arg in `Dockerfile`: `ARG NEXT_PUBLIC_API_URL`
+- Reference in `podman-compose.yml`: `args: { NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL} }`
+- Podman Compose reads from `.env.oci` and passes to Docker build
+- Next.js build embeds the value into the bundle
+
+### 5. Express Was a Backup
 
 The Express server was created as a **workaround for Oracle client issues** in Next.js, but:
 - Next.js API routes worked fine in production
