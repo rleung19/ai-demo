@@ -7,52 +7,52 @@ import { Request } from 'express';
 function getServerUrls(req?: Request) {
   const servers = [];
   
-  // Determine the host from the request
-  const host = req?.get('host');
+  // Determine the host from the request - try multiple methods
+  let host: string | undefined;
+  if (req && typeof req === 'object') {
+    host = (req as any).get?.('host') || req.headers?.host || req.hostname;
+  }
+  
   const protocol = req?.protocol || 'http';
-  const forwardedProto = req?.get('x-forwarded-proto');
+  const forwardedProto = (req as any)?.get?.('x-forwarded-proto') || req?.headers?.['x-forwarded-proto'];
   const actualProtocol = forwardedProto || protocol;
   
-  // If accessed via public domain (not localhost), show public URL first
-  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
-    servers.push({
-      url: `${actualProtocol}://${host}`,
-      description: 'Current server (production)',
-    });
-  }
-  
-  // If accessed via localhost, show localhost URLs
-  if (host && (host.includes('localhost') || host.includes('127.0.0.1'))) {
-    // Extract port from host (e.g., localhost:3001)
-    const port = host.split(':')[1];
-    if (port) {
+  // If we have a request with a host, use it
+  if (host) {
+    // Case 1: Public domain (not localhost)
+    if (!host.includes('localhost') && !host.includes('127.0.0.1')) {
       servers.push({
-        url: `http://localhost:${port}`,
-        description: 'Local Development (current)',
+        url: `${actualProtocol}://${host}`,
+        description: 'Current server (production)',
       });
-    } else {
-      servers.push({
-        url: 'http://localhost:3001',
-        description: 'Local Development',
-      });
-    }
-  }
-  
-  // Fallback: If no request context, show all options
-  if (!req || servers.length === 0) {
-    // Check environment variable as fallback
-    if (process.env.NEXT_PUBLIC_API_URL) {
-      servers.push({
-        url: process.env.NEXT_PUBLIC_API_URL,
-        description: 'Production API',
-      });
+      return servers; // Return early - only show production URL
     }
     
+    // Case 2: Localhost with port
+    if (host.includes('localhost') || host.includes('127.0.0.1')) {
+      const port = host.split(':')[1];
+      if (port) {
+        servers.push({
+          url: `http://localhost:${port}`,
+          description: `Local (port ${port})`,
+        });
+        return servers; // Return early - only show this localhost URL
+      }
+    }
+  }
+  
+  // Fallback: If no request context or couldn't determine host
+  if (process.env.NEXT_PUBLIC_API_URL) {
     servers.push({
-      url: 'http://localhost:3001',
-      description: 'Local Development',
+      url: process.env.NEXT_PUBLIC_API_URL,
+      description: 'Production API',
     });
   }
+  
+  servers.push({
+    url: 'http://localhost:3001',
+    description: 'Local Development',
+  });
   
   return servers;
 }
@@ -67,7 +67,7 @@ export function generateOpenApiSpec(req?: Request) {
     description:
       'API for churn analytics (risk summary, cohorts, metrics, chart data) and product/basket recommendations powered by OCI Data Science models.',
   },
-  servers: getServerUrls(),
+  servers: getServerUrls(req),
   paths: {
     '/api/health': {
       get: {
