@@ -121,12 +121,13 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 ### Change 1: Update Frontend to Use API Domain
 
-**File**: `docker/podman-compose.yml`
+**File**: `docker/.env.oci`
 
-```yaml
-environment:
-  NEXT_PUBLIC_API_URL: "https://ecomm-api.40b5c371.nip.io"
+```bash
+NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io
 ```
+
+Loaded automatically via `env_file: .env.oci` in `podman-compose.yml`.
 
 **What this does**:
 - Frontend now calls `https://ecomm-api.40b5c371.nip.io/api/*`
@@ -202,10 +203,14 @@ API_PORT=3001
 
 ### Production (OCI VM)
 
-**Configuration**:
-```yaml
-# podman-compose.yml
-NEXT_PUBLIC_API_URL: "https://ecomm-api.40b5c371.nip.io"
+**Configuration** (in `docker/.env.oci`):
+```bash
+NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io
+ADB_USERNAME=oml
+ADB_PASSWORD="your-password"
+ADB_CONNECTION_STRING=hhzj2h81ddjwn1dm_medium
+OCI_PRODUCT_RECOMMENDER_MODEL_ENDPOINT=https://...
+OCI_BASKET_RECOMMENDER_MODEL_ENDPOINT=https://...
 ```
 
 **Flow**:
@@ -225,7 +230,17 @@ NEXT_PUBLIC_API_URL: "https://ecomm-api.40b5c371.nip.io"
 cd ~/compose/demo/oracle-demo-ecomm
 git pull origin main
 
-# 2. Rebuild and restart
+# 2. Ensure .env.oci is configured correctly
+cd docker
+cat .env.oci
+
+# Should include (among other variables):
+# NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io
+
+# If not, add it:
+echo "NEXT_PUBLIC_API_URL=https://ecomm-api.40b5c371.nip.io" >> .env.oci
+
+# 3. Rebuild and restart
 cd docker
 podman-compose -f podman-compose.yml down
 podman-compose -f podman-compose.yml build app

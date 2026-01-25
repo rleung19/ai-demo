@@ -19,10 +19,8 @@ services:
       NODE_ENV: "production"
       TNS_ADMIN: "/opt/oracle/wallet"
       ADB_WALLET_PATH: "/opt/oracle/wallet"
-      # API URL for browser (client-side) requests
-      # Points to the dedicated API domain routed by Caddy to Express server (port 3003)
-      NEXT_PUBLIC_API_URL: "https://ecomm-api.40b5c371.nip.io"
-      # Note: Database and OCI endpoint variables are loaded from env_file (.env.oci)
+      # Note: All deployment-specific variables (database credentials, OCI endpoints,
+      # and NEXT_PUBLIC_API_URL) are loaded from env_file (.env.oci)
     volumes:
       - ../wallets/Wallet_HHZJ2H81DDJWN1DM:/opt/oracle/wallet:ro
       - ../.oci:/root/.oci:ro
