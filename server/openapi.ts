@@ -1,6 +1,27 @@
 // OpenAPI 3.0 spec for the Ecommerce ML APIs (Churn + Recommender), used by Swagger UI.
 // All examples are based on real API responses from production.
 
+// Dynamic server configuration based on environment
+function getServerUrls() {
+  const servers = [];
+  
+  // For SSH port forwarding: localhost:3003
+  // When accessing Swagger via SSH tunnel, API calls use the forwarded port
+  // Example: ssh -L 3003:localhost:3003 user@vm → access http://localhost:3003/api-docs
+  servers.push({
+    url: 'http://localhost:3003',
+    description: 'SSH Port Forward (recommended for secure access)',
+  });
+  
+  // For local development: localhost:3001 (direct API server)
+  servers.push({
+    url: 'http://localhost:3001',
+    description: 'Local Development (direct)',
+  });
+  
+  return servers;
+}
+
 export const churnOpenApiSpec = {
   openapi: '3.0.0',
   info: {
@@ -9,12 +30,7 @@ export const churnOpenApiSpec = {
     description:
       'API for churn analytics (risk summary, cohorts, metrics, chart data) and product/basket recommendations powered by OCI Data Science models.',
   },
-  servers: [
-    {
-      url: 'http://localhost:3001',
-      description: 'Express API Server (local)',
-    },
-  ],
+  servers: getServerUrls(),
   paths: {
     '/api/health': {
       get: {

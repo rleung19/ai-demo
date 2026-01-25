@@ -20,6 +20,9 @@
 // - Empty string ('') = Use Next.js API routes (same origin)
 // - URL (e.g., 'http://localhost:3001') = Use Express standalone server
 // - Can be overridden via NEXT_PUBLIC_API_URL environment variable
+//
+// Local dev: Defaults to http://localhost:3001 (matches API_PORT in .env)
+// Production: Set NEXT_PUBLIC_API_URL to public API domain
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export interface ChurnSummary {
