@@ -1,28 +1,65 @@
 // OpenAPI 3.0 spec for the Ecommerce ML APIs (Churn + Recommender), used by Swagger UI.
 // All examples are based on real API responses from production.
 
-// Dynamic server configuration based on environment
-function getServerUrls() {
+import { Request } from 'express';
+
+// Dynamic server configuration based on request context
+function getServerUrls(req?: Request) {
   const servers = [];
   
-  // For SSH port forwarding: localhost:3003
-  // When accessing Swagger via SSH tunnel, API calls use the forwarded port
-  // Example: ssh -L 3003:localhost:3003 user@vm → access http://localhost:3003/api-docs
-  servers.push({
-    url: 'http://localhost:3003',
-    description: 'SSH Port Forward (recommended for secure access)',
-  });
+  // Determine the host from the request
+  const host = req?.get('host');
+  const protocol = req?.protocol || 'http';
+  const forwardedProto = req?.get('x-forwarded-proto');
+  const actualProtocol = forwardedProto || protocol;
   
-  // For local development: localhost:3001 (direct API server)
-  servers.push({
-    url: 'http://localhost:3001',
-    description: 'Local Development (direct)',
-  });
+  // If accessed via public domain (not localhost), show public URL first
+  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+    servers.push({
+      url: `${actualProtocol}://${host}`,
+      description: 'Current server (production)',
+    });
+  }
+  
+  // If accessed via localhost, show localhost URLs
+  if (host && (host.includes('localhost') || host.includes('127.0.0.1'))) {
+    // Extract port from host (e.g., localhost:3001)
+    const port = host.split(':')[1];
+    if (port) {
+      servers.push({
+        url: `http://localhost:${port}`,
+        description: 'Local Development (current)',
+      });
+    } else {
+      servers.push({
+        url: 'http://localhost:3001',
+        description: 'Local Development',
+      });
+    }
+  }
+  
+  // Fallback: If no request context, show all options
+  if (!req || servers.length === 0) {
+    // Check environment variable as fallback
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      servers.push({
+        url: process.env.NEXT_PUBLIC_API_URL,
+        description: 'Production API',
+      });
+    }
+    
+    servers.push({
+      url: 'http://localhost:3001',
+      description: 'Local Development',
+    });
+  }
   
   return servers;
 }
 
-export const churnOpenApiSpec = {
+// Generate OpenAPI spec with optional request context for dynamic server URLs
+export function generateOpenApiSpec(req?: Request) {
+  return {
   openapi: '3.0.0',
   info: {
     title: 'Ecommerce ML API',
@@ -734,4 +771,8 @@ export const churnOpenApiSpec = {
       },
     },
   },
-};
+  };
+}
+
+// Backward compatibility: static export for cases without request context
+export const churnOpenApiSpec = generateOpenApiSpec();

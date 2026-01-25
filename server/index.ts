@@ -28,7 +28,7 @@ import churnChartDataRoutes from './routes/churn/chart-data';
 import churnRiskFactorsRoutes from './routes/churn/risk-factors';
 import productRecommenderRoutes from './routes/recommender/product';
 import basketRecommenderRoutes from './routes/recommender/basket';
-import { churnOpenApiSpec } from './openapi';
+import { generateOpenApiSpec } from './openapi';
 
 // Import database utilities
 import { initializePool, closePool } from './lib/db/oracle';
@@ -53,10 +53,18 @@ app.use((req, res, next) => {
   next();
 });
 
-// Swagger UI - API documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(churnOpenApiSpec));
+// Swagger UI - API documentation (dynamic spec based on request)
+app.use('/api-docs', swaggerUi.serve);
+app.get('/api-docs', (req, res) => {
+  // Generate spec dynamically based on the request
+  const spec = generateOpenApiSpec(req);
+  const html = swaggerUi.generateHTML(spec);
+  res.send(html);
+});
+
+// OpenAPI spec endpoint (dynamic based on request)
 app.get('/openapi.json', (req, res) => {
-  res.json(churnOpenApiSpec);
+  res.json(generateOpenApiSpec(req));
 });
 
 // API Routes

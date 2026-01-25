@@ -78,8 +78,22 @@ echo ""
 echo "🌐 Access points:"
 echo "   Frontend:  https://ecomm.40b5c371.nip.io"
 echo "   API:       https://ecomm-api.40b5c371.nip.io/api/health"
-echo "   Swagger:   SSH tunnel → http://localhost:3003/api-docs"
+echo "   Swagger:   https://ecomm-api.40b5c371.nip.io/api-docs (public)"
+echo "   Swagger:   http://localhost:3003/api-docs (via SSH tunnel)"
 echo ""
-echo "📊 To view full logs: podman logs -f ecomm"
-echo "🔍 To check status:   podman ps"
+echo "📊 Other commands:"
+echo "   View logs: podman logs -f ecomm"
+echo "   Check status: podman ps"
 echo ""
+
+# Ask if user wants to follow logs
+read -p "📺 Follow logs now? [Y/n]: " -n 1 -r
+echo ""
+if [[ $REPLY =~ ^[Nn]$ ]]; then
+  echo "Skipping logs. Run 'podman logs -f ecomm' when ready."
+  echo ""
+else
+  echo "Following logs (Ctrl+C to exit)..."
+  echo "=========================================="
+  podman logs -f ecomm
+fi
