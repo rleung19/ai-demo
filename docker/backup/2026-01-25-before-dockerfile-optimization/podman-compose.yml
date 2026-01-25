@@ -1,0 +1,26 @@
+name: ecomm
+
+version: "3.9"
+
+services:
+  app:
+    image: ecomm:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        # Pass build-time variables for Next.js (embedded in bundle)
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    container_name: ecomm
+    restart: unless-stopped
+    ports:
+      - "3002:3000"   # Next.js exposed on host 4000
+      - "3003:3001"   # Express churn API exposed on host 4001
+    env_file:
+      - .env.oci
+    # All environment variables are now in .env.oci for single-source configuration
+    # This includes: NODE_ENV, database credentials, OCI endpoints, paths, and API URLs
+    volumes:
+      - ../wallets/Wallet_HHZJ2H81DDJWN1DM:/opt/oracle/wallet:ro
+      - ../.oci:/root/.oci:ro
+
