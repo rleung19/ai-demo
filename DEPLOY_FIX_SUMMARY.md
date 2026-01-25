@@ -44,6 +44,21 @@ The build process reads this from `.env.oci` and compiles it into the client-sid
 
 ### Quick Steps
 
+**Option A: Using the deployment script (recommended):**
+
+```bash
+# 1. SSH to VM
+ssh opc@<vm-ip>
+
+# 2. Navigate to docker directory
+cd ~/compose/demo/oracle-demo-ecomm/docker
+
+# 3. Run update script (pulls code + rebuilds + restarts)
+./update.sh
+```
+
+**Option B: Manual steps:**
+
 ```bash
 # 1. SSH to VM
 ssh opc@<vm-ip>
@@ -65,6 +80,8 @@ podman-compose -f podman-compose.yml up -d
 # 5. Verify logs
 podman logs ecomm --tail 50
 ```
+
+> **TIP**: See `docker/SCRIPTS.md` for script documentation and troubleshooting.
 
 ### Expected Log Output
 
