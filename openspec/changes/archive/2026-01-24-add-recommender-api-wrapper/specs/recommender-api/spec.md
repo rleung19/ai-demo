@@ -280,3 +280,101 @@ Both services in same container, separate routing domains
 ```
 
 **Status**: ✅ Production deployment verified working
+
+---
+
+## Dynamic Swagger Server URLs (2026-01-25)
+
+### Enhancement: Context-Aware Swagger UI
+The system SHALL provide context-appropriate Swagger server URLs based on how the API documentation is accessed.
+
+**Problem**: Swagger UI was showing all possible server URLs regardless of access context, causing confusion when users had to manually select the correct server.
+
+**Solution**: Dynamic server URL detection based on HTTP request headers:
+
+**Requirements**:
+- Swagger UI SHALL detect the host from incoming HTTP request
+- Server dropdown SHALL show only the relevant URL for the access context
+- Production access SHALL not expose localhost options (security)
+- SSH tunnel access SHALL show only the tunnel endpoint
+- Local development SHALL show only local server URL
+
+**Implementation**:
+```typescript
+// server/openapi.ts
+function getServerUrls(req?: Request) {
+  const host = req?.get?.('host') || req.headers?.host || req.hostname;
+  const forwardedProto = req?.headers?.['x-forwarded-proto'];
+  
+  // Production: non-localhost domain
+  if (host && !host.includes('localhost')) {
+    return [{ url: `${forwardedProto || 'https'}://${host}`, ... }];
+  }
+  
+  // Localhost: extract port for accurate display
+  if (host?.includes('localhost')) {
+    const port = host.split(':')[1];
+    return [{ url: `http://localhost:${port}`, ... }];
+  }
+  
+  // Fallback
+  return defaultServers;
+}
+
+export function generateOpenApiSpec(req?: Request) {
+  return {
+    servers: getServerUrls(req),  // Pass request for dynamic detection
+    // ...
+  };
+}
+```
+
+**Key fix**: Request object must be passed to `getServerUrls(req)` - this was missing, causing all contexts to use fallback servers.
+
+#### Scenario: Production browser access
+- **WHEN** user accesses `https://ecomm-api.40b5c371.nip.io/api-docs`
+- **THEN** server dropdown shows only `https://ecomm-api.40b5c371.nip.io`
+- **AND** "Try it out" calls production API directly
+- **AND** no localhost options are exposed
+
+#### Scenario: SSH port forward access
+- **WHEN** user accesses via SSH tunnel `http://localhost:3003/api-docs`
+- **THEN** server dropdown shows only `http://localhost:3003`
+- **AND** "Try it out" calls through SSH tunnel
+- **AND** production URLs are not shown
+
+#### Scenario: Local development
+- **WHEN** developer accesses `http://localhost:3001/api-docs`
+- **THEN** server dropdown shows only `http://localhost:3001`
+- **AND** "Try it out" calls local server
+- **AND** production URLs are not shown
+
+### Enhancement: Deployment Script Improvements
+The deployment script SHALL provide better user experience and reliability.
+
+**Requirements**:
+- Script SHALL export build-time variables before Docker build
+- Script SHALL prompt user to follow logs after deployment
+- Script SHALL use correct Podman command syntax (flags before container name)
+- Script SHALL verify required environment variables exist
+
+**Implementation**:
+- `docker/deploy.sh`: Interactive log following, export NEXT_PUBLIC_API_URL
+- `docker/update.sh`: Pulls code then runs deploy.sh
+- Fixed Podman syntax: `podman logs --tail=50 ecomm` (not `ecomm --tail 50`)
+
+#### Scenario: Deploy with log following
+- **WHEN** user runs `./deploy.sh`
+- **THEN** script exports `NEXT_PUBLIC_API_URL` from `.env.oci`
+- **AND** script rebuilds container with build args
+- **AND** script prompts "Follow logs now? [Y/n]"
+- **AND** if user presses Enter or Y, logs follow automatically
+- **AND** if user presses N, script exits with log command shown
+
+**Benefits**:
+- ✅ Eliminates manual server dropdown selection
+- ✅ Improves security (localhost not exposed publicly)
+- ✅ Better developer experience (correct context automatically)
+- ✅ Easier deployment workflow
+
+**Status**: ✅ Verified working in all contexts (local, SSH, production)

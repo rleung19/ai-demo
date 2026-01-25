@@ -459,10 +459,175 @@ Container: ecomm
 
 ---
 
+---
+
+## Dynamic Swagger Server URLs Fix (2026-01-25)
+
+### Issue Discovered
+
+After deployment, Swagger UI was showing incorrect server URLs:
+- When accessing via SSH port forward (`http://localhost:3003/api-docs`), it showed production URLs
+- When accessing via production (`https://ecomm-api.40b5c371.nip.io/api-docs`), it showed localhost URLs
+- Users had to manually change the server dropdown, causing confusion
+
+### Root Cause
+
+**Critical bug in OpenAPI spec generation** - request object not passed to server URL function:
+
+```typescript
+// server/openapi.ts (BEFORE - broken)
+export function generateOpenApiSpec(req?: Request) {
+  return {
+    servers: getServerUrls(),  // ❌ req not passed!
+    // ...
+  };
+}
+```
+
+The `getServerUrls()` function needed the request to detect the host, but it was never receiving it.
+
+### Fix Applied
+
+**File**: `server/openapi.ts`
+
+1. **Pass request to getServerUrls()**:
+```typescript
+export function generateOpenApiSpec(req?: Request) {
+  return {
+    servers: getServerUrls(req),  // ✅ Pass req to detect host
+    // ...
+  };
+}
+```
+
+2. **Enhanced host detection with fallbacks**:
+```typescript
+function getServerUrls(req?: Request) {
+  // Try multiple methods to get host
+  let host: string | undefined;
+  if (req && typeof req === 'object') {
+    host = (req as any).get?.('host') || req.headers?.host || req.hostname;
+  }
+  
+  const forwardedProto = (req as any)?.get?.('x-forwarded-proto') || 
+                         req?.headers?.['x-forwarded-proto'];
+  const actualProtocol = forwardedProto || req?.protocol || 'http';
+  
+  // Case 1: Production (non-localhost)
+  if (host && !host.includes('localhost')) {
+    return [{ 
+      url: `${actualProtocol}://${host}`, 
+      description: 'Current server (production)' 
+    }];  // Early return - only production
+  }
+  
+  // Case 2: Localhost with port
+  if (host && host.includes('localhost')) {
+    const port = host.split(':')[1];
+    if (port) {
+      return [{ 
+        url: `http://localhost:${port}`, 
+        description: `Local (port ${port})` 
+      }];  // Early return - only this port
+    }
+  }
+  
+  // Fallback (no request context)
+  return fallbackServers;
+}
+```
+
+3. **Added early returns** to prevent fallthrough to default servers
+
+### Deployment Script Enhancements
+
+**File**: `docker/deploy.sh`
+
+1. **Interactive log following**:
+```bash
+# Ask if user wants to follow logs
+read -p "📺 Follow logs now? [Y/n]: " -n 1 -r
+if [[ $REPLY =~ ^[Nn]$ ]]; then
+  echo "Skipping logs."
+else
+  podman logs -f ecomm  # Follow logs automatically
+fi
+```
+
+2. **Export NEXT_PUBLIC_API_URL before build**:
+```bash
+# Export build-time variables from .env.oci
+export $(grep "^NEXT_PUBLIC_API_URL=" .env.oci | xargs)
+echo "✅ NEXT_PUBLIC_API_URL exported: $NEXT_PUBLIC_API_URL"
+
+# Now build (variable available during build)
+podman-compose build --no-cache
+```
+
+3. **Fixed Podman logs syntax** (Podman requires flags before container name):
+```bash
+# Before (broken): podman logs ecomm --tail 50
+# After (working): podman logs --tail=50 ecomm
+```
+
+### Results
+
+**Swagger server dropdown now context-aware:**
+
+| Access Method | URL | Dropdown Shows | Try It Out Calls |
+|--------------|-----|----------------|-----------------|
+| SSH tunnel | `http://localhost:3003/api-docs` | Only `localhost:3003` | SSH tunnel ✅ |
+| Production | `https://ecomm-api.40b5c371.nip.io/api-docs` | Only production URL | Public API ✅ |
+| Local dev | `http://localhost:3001/api-docs` | Only `localhost:3001` | Local server ✅ |
+
+**Benefits**:
+- ✅ No confusion - each context shows only relevant URL
+- ✅ "Try it out" works immediately without changing dropdown
+- ✅ Secure - production doesn't expose localhost options
+- ✅ Developer friendly - local dev doesn't show production URLs
+
+### Files Modified
+
+- `server/openapi.ts` - Fixed request passing, enhanced host detection
+- `server/index.ts` - Updated /api-docs and /openapi.json endpoints
+- `docker/deploy.sh` - Added log following prompt, export build vars, fixed syntax
+- `docker/update.sh` - Calls deploy.sh
+- `docker/SCRIPTS.md` - Updated documentation
+
+### Testing
+
+**Local**: ✅ Verified
+```bash
+curl http://localhost:3001/openapi.json | jq '.servers'
+# Returns: [{"url": "http://localhost:3001", "description": "Local (port 3001)"}]
+```
+
+**Production SSH tunnel**: ✅ Working
+```bash
+ssh -L 3003:localhost:3003 ubuntu@vm
+open http://localhost:3003/api-docs
+# Shows: Only localhost:3003 in dropdown
+```
+
+**Production public**: ✅ Working
+```
+open https://ecomm-api.40b5c371.nip.io/api-docs
+# Shows: Only https://ecomm-api.40b5c371.nip.io in dropdown
+```
+
+### Documentation Added
+
+- `SWAGGER_DEBUG_TESTING.md` - Complete testing guide with expected behavior
+- Updated `SWAGGER_DYNAMIC_SERVERS.md` - Architecture and implementation details
+
+---
+
 ## Final Status
 
 **Implementation**: ✅ Complete  
 **Local Testing**: ✅ Verified  
 **Production Deployment**: ✅ Working  
+**Dynamic Swagger URLs**: ✅ Context-aware  
 **Documentation**: ✅ Comprehensive  
-**Archived**: 2026-01-24
+**Archived**: 2026-01-24  
+**Last Updated**: 2026-01-25
