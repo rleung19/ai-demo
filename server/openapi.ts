@@ -249,6 +249,188 @@ export function generateOpenApiSpec(req?: Request) {
         },
       },
     },
+    '/api/kpi/churn/cohorts/{name}': {
+      get: {
+        summary: 'Cohort detail with user list',
+        description: 'Get detailed information for a specific cohort including summary statistics and paginated list of users with their churn probabilities and LTV values',
+        parameters: [
+          {
+            name: 'name',
+            in: 'path',
+            required: true,
+            description: 'Cohort name (VIP, Regular, New, Dormant, or Other)',
+            schema: {
+              type: 'string',
+              enum: ['VIP', 'Regular', 'New', 'Dormant', 'Other'],
+              example: 'VIP',
+            },
+          },
+          {
+            name: 'limit',
+            in: 'query',
+            required: false,
+            description: 'Number of users per page (1-500, or -1 for all users)',
+            schema: {
+              type: 'integer',
+              minimum: -1,
+              maximum: 500,
+              default: 50,
+              example: 50,
+            },
+          },
+          {
+            name: 'offset',
+            in: 'query',
+            required: false,
+            description: 'Pagination offset',
+            schema: {
+              type: 'integer',
+              minimum: 0,
+              default: 0,
+              example: 0,
+            },
+          },
+          {
+            name: 'sort',
+            in: 'query',
+            required: false,
+            description: 'Sort order: "churn" (by risk) or "ltv" (by value)',
+            schema: {
+              type: 'string',
+              enum: ['churn', 'ltv'],
+              default: 'churn',
+              example: 'churn',
+            },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Cohort detail with user list',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    cohort: { type: 'string', example: 'VIP' },
+                    definition: { type: 'string', example: 'LIFETIME_VALUE > 5000 OR AFFINITY_CARD = 1' },
+                    summary: {
+                      type: 'object',
+                      properties: {
+                        customerCount: { type: 'integer', example: 976 },
+                        atRiskCount: { type: 'integer', example: 248 },
+                        atRiskPercentage: { type: 'number', example: 25.41 },
+                        averageRiskScore: { type: 'number', example: 27.78 },
+                        ltvAtRisk: { type: 'number', example: 331117.12 },
+                      },
+                    },
+                    users: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          userId: { type: 'string', example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' },
+                          churnProbability: { type: 'number', example: 0.7234, description: 'Churn probability (0.0-1.0)' },
+                          ltv: { type: 'number', example: 8452.50, description: 'Lifetime value (USD)' },
+                        },
+                      },
+                    },
+                    pagination: {
+                      type: 'object',
+                      properties: {
+                        total: { type: 'integer', example: 976 },
+                        limit: { type: 'integer', example: 50 },
+                        offset: { type: 'integer', example: 0 },
+                      },
+                    },
+                  },
+                },
+                example: {
+                  cohort: 'VIP',
+                  definition: 'LIFETIME_VALUE > 5000 OR AFFINITY_CARD = 1',
+                  summary: {
+                    customerCount: 976,
+                    atRiskCount: 248,
+                    atRiskPercentage: 25.41,
+                    averageRiskScore: 27.78,
+                    ltvAtRisk: 331117.12,
+                  },
+                  users: [
+                    {
+                      userId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                      churnProbability: 0.7234,
+                      ltv: 8452.50,
+                    },
+                    {
+                      userId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+                      churnProbability: 0.6891,
+                      ltv: 6200.00,
+                    },
+                  ],
+                  pagination: {
+                    total: 976,
+                    limit: 50,
+                    offset: 0,
+                  },
+                },
+              },
+            },
+          },
+          '400': {
+            description: 'Invalid request parameters',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: { type: 'string', example: 'Validation failed' },
+                    message: { type: 'string', example: 'Invalid request parameters' },
+                    details: {
+                      type: 'object',
+                      properties: {
+                        errors: {
+                          type: 'array',
+                          items: { type: 'string' },
+                          example: ['limit must be between 1 and 500, or -1 for all users'],
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '404': {
+            description: 'Cohort not found',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: { type: 'string', example: 'Not found' },
+                    message: { type: 'string', example: "Cohort 'InvalidCohort' not found. Valid cohorts: VIP, Regular, New, Dormant, Other" },
+                  },
+                },
+              },
+            },
+          },
+          '503': {
+            description: 'Service unavailable',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: { type: 'string', example: 'Service unavailable' },
+                    message: { type: 'string', example: 'Unable to fetch cohort detail' },
+                    fallback: { type: 'boolean', example: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     '/api/kpi/churn/metrics': {
       get: {
         summary: 'Model performance metrics',

@@ -23,6 +23,7 @@ dotenv.config({ path: path.join(process.cwd(), '.env') });
 import healthRoutes from './routes/health';
 import churnSummaryRoutes from './routes/churn/summary';
 import churnCohortsRoutes from './routes/churn/cohorts';
+import churnCohortDetailRoutes from './routes/churn/cohort-detail';
 import churnMetricsRoutes from './routes/churn/metrics';
 import churnChartDataRoutes from './routes/churn/chart-data';
 import churnRiskFactorsRoutes from './routes/churn/risk-factors';
@@ -70,6 +71,8 @@ app.get('/openapi.json', (req, res) => {
 // API Routes
 app.use('/api/health', healthRoutes);
 app.use('/api/kpi/churn/summary', churnSummaryRoutes);
+// Mount detail route before list route so /:name matches before /
+app.use('/api/kpi/churn/cohorts', churnCohortDetailRoutes);
 app.use('/api/kpi/churn/cohorts', churnCohortsRoutes);
 app.use('/api/kpi/churn/metrics', churnMetricsRoutes);
 app.use('/api/kpi/churn/chart-data', churnChartDataRoutes);
@@ -86,6 +89,7 @@ app.get('/', (req, res) => {
       health: '/api/health',
       summary: '/api/kpi/churn/summary',
       cohorts: '/api/kpi/churn/cohorts',
+      cohortDetail: '/api/kpi/churn/cohorts/:name',
       metrics: '/api/kpi/churn/metrics',
       chartData: '/api/kpi/churn/chart-data',
       riskFactors: '/api/kpi/churn/risk-factors',
