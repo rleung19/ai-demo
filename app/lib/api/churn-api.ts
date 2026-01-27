@@ -88,6 +88,18 @@ export interface RiskFactorsResponse {
   lastUpdate: string;
 }
 
+export interface VipCohortUser {
+  userId: string;
+  churnProbability: number;
+  ltv: number;
+}
+
+export interface VipAgenticFlowResult {
+  success: boolean;
+  message: string;
+  processed?: number;
+}
+
 export interface ApiError {
   error: string;
   message: string;
@@ -95,30 +107,25 @@ export interface ApiError {
 }
 
 /**
- * Fetch with timeout and retry logic.
+ * Fetch with simple retry logic (no AbortController / manual timeout).
  *
- * Now that we've identified browser-side timeouts as the main source of
- * duplicate calls, this helper is intentionally simple – no global
- * deduplication or cross-request state, just retries and a per-call timeout.
+ * We intentionally avoid AbortController here because it can behave
+ * differently between runtimes and was causing runtime errors in the
+ * browser overlay. Instead, we:
+ * - Retry on network failures (TypeError)
+ * - Retry on 5xx responses
+ * - Otherwise return the response (even if non-2xx) and let callers handle it.
  */
 async function fetchWithRetry(
   url: string,
   options: RequestInit = {},
-  retries = 3,
-  timeout = 15000 // 15 seconds to comfortably cover DB latency
+  retries = 3
 ): Promise<Response> {
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
     try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+      const response = await fetch(url, options);
 
       // Retry on 5xx errors
       if (response.status >= 500 && attempt < retries) {
@@ -128,14 +135,10 @@ async function fetchWithRetry(
 
       return response;
     } catch (error: any) {
-      clearTimeout(timeoutId);
       lastError = error;
 
-      // Retry on timeout or network error
-      if (
-        attempt < retries &&
-        (error.name === 'AbortError' || error.name === 'TypeError')
-      ) {
+      // Retry on network errors
+      if (attempt < retries && error?.name === 'TypeError') {
         await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
         continue;
       }
@@ -295,11 +298,99 @@ export async function getChurnRiskFactors(): Promise<RiskFactorsResponse | null>
 }
 
 /**
+ * Get top at-risk VIP users (agentic flow helper)
+ * Uses cohort detail endpoint to fetch top 3 at-risk VIP customers by LTV.
+ */
+export async function getVipTopAtRiskCustomers(): Promise<VipCohortUser[]> {
+  const callId = Math.random().toString(36).substring(7);
+  console.log(`[getVipTopAtRiskCustomers:${callId}] Called`);
+
+  try {
+    const response = await fetchWithRetry(
+      `${API_BASE_URL}/api/kpi/churn/cohorts/VIP?limit=3&sort=ltv&atRiskOnly=true`
+    );
+
+    if (!response.ok) {
+      console.error(
+        `[getVipTopAtRiskCustomers:${callId}] Non-OK response:`,
+        response.status,
+        response.statusText
+      );
+      return [];
+    }
+
+    const data = await response.json();
+    const users = (data?.users || []) as VipCohortUser[];
+    return Array.isArray(users) ? users : [];
+  } catch (error) {
+    console.error('[getVipTopAtRiskCustomers] Failed to fetch VIP cohort detail:', error);
+    return [];
+  }
+}
+
+/**
+ * Trigger VIP re-engagement agentic flow via n8n webhook.
+ */
+export async function triggerVipAgenticFlow(
+  users: VipCohortUser[]
+): Promise<VipAgenticFlowResult> {
+  const webhookUrl = process.env.NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL;
+  const callId = Math.random().toString(36).substring(7);
+  console.log(`[triggerVipAgenticFlow:${callId}] Called with ${users.length} users`);
+
+  if (!webhookUrl) {
+    throw new Error('Agentic flow webhook URL (NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL) is not set');
+  }
+
+  try {
+    const response = await fetchWithRetry(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        cohort: 'VIP',
+        users,
+      }),
+    });
+
+    if (!response.ok) {
+      let message = `Webhook responded with status ${response.status}`;
+      try {
+        const errorBody = await response.json();
+        if (errorBody?.message) {
+          message = errorBody.message;
+        }
+      } catch {
+        // ignore JSON parse errors
+      }
+      return {
+        success: false,
+        message,
+      };
+    }
+
+    const data = await response.json();
+    return {
+      success: !!data.success,
+      message: data.message || 'VIP re-engagement flow completed.',
+      processed: typeof data.processed === 'number' ? data.processed : undefined,
+    };
+  } catch (error: any) {
+    console.error('[triggerVipAgenticFlow] Failed to call webhook:', error);
+    return {
+      success: false,
+      message: error?.message || 'Failed to trigger VIP re-engagement flow.',
+    };
+  }
+}
+
+/**
  * Check API health
  */
 export async function checkApiHealth(): Promise<boolean> {
   try {
-    const response = await fetchWithRetry(`${API_BASE_URL}/api/health`, {}, 1, 10000);  // Increased to 10 seconds
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/health`, {}, 1);
     if (!response.ok) return false;
     const health = await response.json();
     return health.status === 'healthy' && health.services?.database === 'connected';

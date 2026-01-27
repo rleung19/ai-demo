@@ -568,6 +568,77 @@ def test_oracledb_connection():
         
         return False
 
+
+def get_db_connection():
+    """
+    Return an oracledb connection using .env. For use by other scripts (e.g. list_test_users.py).
+    Uses thick mode (Oracle Instant Client) when possible; ADB + wallet often fails in thin mode
+    with ORA-12506 / DPY-6000 "Listener refused connection".
+
+    Raises:
+        Exception: if connection fails, with message to run this script or use Data Science notebook.
+    """
+    import glob
+    import oracledb
+    wallet_path = os.getenv("ADB_WALLET_PATH")
+    connection_string = os.getenv("ADB_CONNECTION_STRING")
+    username = os.getenv("ADB_USERNAME", "OML")
+    password = os.getenv("ADB_PASSWORD")
+
+    if not all([wallet_path, connection_string, password]):
+        raise RuntimeError("Missing ADB_WALLET_PATH, ADB_CONNECTION_STRING, or ADB_PASSWORD in .env")
+
+    os.environ.setdefault("TNS_ADMIN", wallet_path)
+
+    # Find Oracle Instant Client (thick mode); thin mode often gives ORA-12506 with ADB+wallet
+    lib_dir = None
+    for path in [
+        "/opt/homebrew/lib",
+        "/usr/local/lib",
+        *([g for g in glob.glob("/opt/oracle/instantclient_*/lib") or []]),
+        os.path.join(os.getenv("ORACLE_HOME", ""), "lib"),
+    ]:
+        if not path:
+            continue
+        for name in ["libclntsh.dylib", "libclntsh.so"]:
+            p = os.path.join(path, name)
+            if os.path.exists(p) or os.path.islink(p):
+                lib_dir = path
+                break
+        if lib_dir:
+            break
+
+    if lib_dir:
+        try:
+            oracledb.init_oracle_client(lib_dir=lib_dir)
+        except Exception:
+            try:
+                oracledb.init_oracle_client(lib_dir=lib_dir, config_dir=wallet_path)
+            except Exception:
+                pass
+    else:
+        try:
+            oracledb.init_oracle_client()
+        except Exception:
+            pass
+
+    try:
+        return oracledb.connect(
+            user=username,
+            password=password,
+            dsn=connection_string,
+        )
+    except Exception as e:
+        err = str(e)
+        if "ORA-12506" in err or "DPY-6000" in err or "Listener refused" in err:
+            raise RuntimeError(
+                "Connection failed (ORA-12506 / Listener refused). ADB + wallet usually needs "
+                "thick mode. Run: python scripts/test-python-connection.py . "
+                "Or use the Data Science notebook snippet in list_test_users.py docstring."
+            ) from e
+        raise
+
+
 def main():
     """Main test function"""
     print("\n" + "=" * 60)

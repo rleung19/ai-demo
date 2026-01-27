@@ -3,6 +3,12 @@
 import { useEffect, useState } from 'react';
 import { KPIDetailData } from '@/app/lib/types/kpi';
 import ChartWrapper from '../charts/chart-wrapper';
+import {
+  getVipTopAtRiskCustomers,
+  triggerVipAgenticFlow,
+  VipAgenticFlowResult,
+  VipCohortUser,
+} from '@/app/lib/api/churn-api';
 
 // Cohort definitions for tooltips
 const cohortDefinitions: Record<string, string> = {
@@ -40,6 +46,16 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
       document.body.style.overflow = '';
     };
   }, [isOpen, onClose]);
+
+  const [vipFlowLoading, setVipFlowLoading] = useState(false);
+  const [vipFlowStatus, setVipFlowStatus] = useState<'idle' | 'success' | 'error' | 'info'>(
+    'idle'
+  );
+  const [vipFlowMessage, setVipFlowMessage] = useState<string | null>(null);
+  const [vipFlowProcessed, setVipFlowProcessed] = useState<number | null>(null);
+
+  const vipWebhookUrl = process.env.NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL;
+  const isVipAgenticEnabled = !!vipWebhookUrl;
 
   if (!isOpen) return null;
 
@@ -79,6 +95,51 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
     if (metadata.id === 9) return 'bar'; // CLV - bar
     if (metadata.id === 10) return 'line'; // Demand forecast - line with confidence bands
     return 'line';
+  };
+
+  const handleVipProceed = async () => {
+    if (!metadata || metadata.id !== 1) return;
+    if (!isVipAgenticEnabled) return;
+
+    const confirmed = window.confirm('Proceed to launch VIP re-engagement campaign?');
+    if (!confirmed) {
+      return;
+    }
+
+    setVipFlowLoading(true);
+    setVipFlowStatus('idle');
+    setVipFlowMessage(null);
+    setVipFlowProcessed(null);
+
+    try {
+      const users: VipCohortUser[] = await getVipTopAtRiskCustomers();
+
+      if (!users || users.length === 0) {
+        setVipFlowStatus('info');
+        setVipFlowMessage('No at-risk VIP customers to re-engage at this time.');
+        return;
+      }
+
+      const result: VipAgenticFlowResult = await triggerVipAgenticFlow(users);
+
+      if (result.success) {
+        setVipFlowStatus('success');
+      } else {
+        setVipFlowStatus('error');
+      }
+      setVipFlowMessage(result.message);
+      if (typeof result.processed === 'number') {
+        setVipFlowProcessed(result.processed);
+      }
+    } catch (error: any) {
+      console.error('[KPIDetailModal] VIP agentic flow failed:', error);
+      setVipFlowStatus('error');
+      setVipFlowMessage(
+        error?.message || 'VIP re-engagement flow failed: unable to contact API or webhook.'
+      );
+    } finally {
+      setVipFlowLoading(false);
+    }
   };
 
   return (
@@ -540,86 +601,168 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
             <h3 className="text-sm uppercase font-semibold mb-4 tracking-wide" style={{ color: 'var(--text-muted)' }}>
               AI-Recommended Actions
             </h3>
-            <div className="space-y-4">
-              {actions.map((action) => (
-                <div
-                  key={action.id}
-                  className="p-5 rounded-xl border-l-4"
-                  style={{
-                    borderLeftColor:
-                      action.priority === 'high'
-                        ? '#f43f5e'
-                        : action.priority === 'medium'
-                          ? '#f59e0b'
-                          : '#14b8a6',
-                    backgroundColor:
-                      action.priority === 'high'
+            {metadata.id === 1 && vipFlowStatus !== 'idle' && vipFlowMessage && (
+              <div
+                className="mb-4 rounded-lg p-4 text-sm"
+                style={{
+                  backgroundColor:
+                    vipFlowStatus === 'success'
+                      ? 'rgba(16, 185, 129, 0.1)'
+                      : vipFlowStatus === 'error'
                         ? 'rgba(244, 63, 94, 0.1)'
-                        : action.priority === 'medium'
-                          ? 'rgba(245, 158, 11, 0.1)'
-                          : 'rgba(20, 184, 166, 0.1)',
-                  }}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                      {action.title}
-                    </h4>
-                    <span
-                      className="px-2 py-1 text-xs font-semibold rounded"
-                      style={{
-                        backgroundColor:
-                          action.priority === 'high'
-                            ? 'rgba(244, 63, 94, 0.2)'
-                            : action.priority === 'medium'
-                              ? 'rgba(245, 158, 11, 0.2)'
-                              : 'rgba(20, 184, 166, 0.2)',
-                        color:
-                          action.priority === 'high'
-                            ? '#f43f5e'
-                            : action.priority === 'medium'
-                              ? '#f59e0b'
-                              : '#14b8a6',
-                      }}
-                    >
-                      {action.priority.toUpperCase()}
-                    </span>
+                        : 'rgba(59, 130, 246, 0.1)',
+                  border: '1px solid',
+                  borderColor:
+                    vipFlowStatus === 'success'
+                      ? 'rgba(16, 185, 129, 0.4)'
+                      : vipFlowStatus === 'error'
+                        ? 'rgba(244, 63, 94, 0.4)'
+                        : 'rgba(59, 130, 246, 0.4)',
+                  color:
+                    vipFlowStatus === 'success'
+                      ? '#10b981'
+                      : vipFlowStatus === 'error'
+                        ? '#f43f5e'
+                        : '#3b82f6',
+                }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="font-semibold mb-1">
+                      {vipFlowStatus === 'success'
+                        ? 'VIP re-engagement triggered'
+                        : vipFlowStatus === 'error'
+                          ? 'VIP re-engagement failed'
+                          : 'No at-risk VIP customers'}
+                    </div>
+                    <div>
+                      {vipFlowMessage}
+                      {typeof vipFlowProcessed === 'number' && vipFlowProcessed >= 0 && (
+                        <span>{` (Processed ${vipFlowProcessed} VIP customers)`}</span>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
-                    {action.description}
-                  </p>
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <span
-                      className="px-3 py-1 rounded"
-                      style={{
-                        backgroundColor: 'rgba(139, 92, 246, 0.2)',
-                        color: 'var(--accent-violet)',
-                      }}
-                    >
-                      {action.owner}
-                    </span>
-                    <span
-                      className="px-3 py-1 rounded"
-                      style={{
-                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                        color: '#3b82f6',
-                      }}
-                    >
-                      Due: {action.dueDate}
-                    </span>
-                    {action.impact && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVipFlowStatus('idle');
+                      setVipFlowMessage(null);
+                      setVipFlowProcessed(null);
+                    }}
+                    className="text-xs px-2 py-1 rounded border"
+                    style={{
+                      borderColor: 'var(--border-color)',
+                      color: 'var(--text-secondary)',
+                    }}
+                    aria-label="Dismiss VIP re-engagement status"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="space-y-4">
+              {actions.map((action) => {
+                const isVipAgenticCard =
+                  metadata.id === 1 && action.id === '1' && isVipAgenticEnabled;
+                return (
+                  <div
+                    key={action.id}
+                    className="p-5 rounded-xl border-l-4"
+                    style={{
+                      borderLeftColor:
+                        action.priority === 'high'
+                          ? '#f43f5e'
+                          : action.priority === 'medium'
+                            ? '#f59e0b'
+                            : '#14b8a6',
+                      backgroundColor:
+                        action.priority === 'high'
+                          ? 'rgba(244, 63, 94, 0.1)'
+                          : action.priority === 'medium'
+                            ? 'rgba(245, 158, 11, 0.1)'
+                            : 'rgba(20, 184, 166, 0.1)',
+                    }}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        {action.title}
+                      </h4>
                       <span
-                        className="px-3 py-1 rounded"
+                        className="px-2 py-1 text-xs font-semibold rounded"
                         style={{
-                          backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                          color: '#10b981',
+                          backgroundColor:
+                            action.priority === 'high'
+                              ? 'rgba(244, 63, 94, 0.2)'
+                              : action.priority === 'medium'
+                                ? 'rgba(245, 158, 11, 0.2)'
+                                : 'rgba(20, 184, 166, 0.2)',
+                          color:
+                            action.priority === 'high'
+                              ? '#f43f5e'
+                              : action.priority === 'medium'
+                                ? '#f59e0b'
+                                : '#14b8a6',
                         }}
                       >
-                        {action.impact}
+                        {action.priority.toUpperCase()}
                       </span>
-                    )}
+                    </div>
+                    <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
+                      {action.description}
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-xs items-center justify-between">
+                      <div className="flex flex-wrap gap-2">
+                        <span
+                          className="px-3 py-1 rounded"
+                          style={{
+                            backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                            color: 'var(--accent-violet)',
+                          }}
+                        >
+                          {action.owner}
+                        </span>
+                        <span
+                          className="px-3 py-1 rounded"
+                          style={{
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                            color: '#3b82f6',
+                          }}
+                        >
+                          Due: {action.dueDate}
+                        </span>
+                        {action.impact && (
+                          <span
+                            className="px-3 py-1 rounded"
+                            style={{
+                              backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                              color: '#10b981',
+                            }}
+                          >
+                            {action.impact}
+                          </span>
+                        )}
+                      </div>
+                      {isVipAgenticCard && (
+                        <button
+                          type="button"
+                          onClick={handleVipProceed}
+                          disabled={vipFlowLoading}
+                          className="mt-3 md:mt-0 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors"
+                          style={{
+                            backgroundColor: vipFlowLoading ? 'rgba(15, 118, 110, 0.6)' : '#0f766e',
+                            color: '#ecfeff',
+                            opacity: vipFlowLoading ? 0.8 : 1,
+                          }}
+                          aria-label="Proceed with VIP re-engagement campaign"
+                        >
+                          {vipFlowLoading ? 'Processing…' : 'Proceed'}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

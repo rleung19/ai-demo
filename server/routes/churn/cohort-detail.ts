@@ -39,38 +39,77 @@ router.get('/:name', async (req, res) => {
     const limitParam = req.query.limit as string | undefined;
     const offsetParam = req.query.offset as string | undefined;
     const sortParam = (req.query.sort as string | undefined) || 'churn';
+    const atRiskOnlyParam = req.query.atRiskOnly as string | undefined;
+    const minLtvParam = req.query.minLtv as string | undefined;
+    const maxLtvParam = req.query.maxLtv as string | undefined;
 
-    let limit: number;
+    const validationErrors: string[] = [];
+
+    let limit: number = 3;
     if (limitParam === '-1') {
       limit = -1;
     } else {
-      const parsedLimit = parseInt(limitParam || '50', 10);
+      const parsedLimit = parseInt(limitParam || '3', 10);
       if (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 500) {
-        return handleValidationError(
-          ['limit must be between 1 and 500, or -1 for all users'],
-          res
-        );
+        validationErrors.push('limit must be between 1 and 500, or -1 for all users');
+      } else {
+        limit = parsedLimit;
       }
-      limit = parsedLimit;
     }
 
     const offset = parseInt(offsetParam || '0', 10);
     if (isNaN(offset) || offset < 0) {
-      return handleValidationError(
-        ['offset must be a non-negative integer'],
-        res
-      );
+      validationErrors.push('offset must be a non-negative integer');
     }
 
     if (sortParam !== 'churn' && sortParam !== 'ltv') {
-      return handleValidationError(
-        ['sort must be either "churn" or "ltv"'],
-        res
-      );
+      validationErrors.push('sort must be either "churn" or "ltv"');
+    }
+
+    // Validate atRiskOnly (optional boolean, default: true)
+    let atRiskOnly = true;
+    if (atRiskOnlyParam !== undefined) {
+      if (atRiskOnlyParam === 'true') {
+        atRiskOnly = true;
+      } else if (atRiskOnlyParam === 'false') {
+        atRiskOnly = false;
+      } else {
+        validationErrors.push('atRiskOnly must be "true" or "false" when provided');
+      }
+    }
+
+    // Validate LTV filters (optional numbers, >= 0, and maxLtv >= minLtv when both provided)
+    let minLtv: number | undefined;
+    let maxLtv: number | undefined;
+
+    if (minLtvParam !== undefined) {
+      const parsedMin = parseFloat(minLtvParam);
+      if (isNaN(parsedMin) || parsedMin < 0) {
+        validationErrors.push('minLtv must be a non-negative number when provided');
+      } else {
+        minLtv = parsedMin;
+      }
+    }
+
+    if (maxLtvParam !== undefined) {
+      const parsedMax = parseFloat(maxLtvParam);
+      if (isNaN(parsedMax) || parsedMax < 0) {
+        validationErrors.push('maxLtv must be a non-negative number when provided');
+      } else {
+        maxLtv = parsedMax;
+      }
+    }
+
+    if (minLtv !== undefined && maxLtv !== undefined && maxLtv < minLtv) {
+      validationErrors.push('maxLtv must be greater than or equal to minLtv');
+    }
+
+    if (validationErrors.length > 0) {
+      return handleValidationError(validationErrors, res);
     }
 
     // Check cache
-    const cacheKey = `churn:cohort-detail:${cohortName}:${limit}:${offset}:${sortParam}`;
+    const cacheKey = `churn:cohort-detail:${cohortName}:${limit}:${offset}:${sortParam}:${atRiskOnly ? '1' : '0'}:${minLtv ?? 'null'}:${maxLtv ?? 'null'}`;
     const cached = getCache<any>(cacheKey);
     if (cached) {
       return res.json(cached);
@@ -138,6 +177,31 @@ router.get('/:name', async (req, res) => {
       ? 'ORDER BY LIFETIME_VALUE DESC'
       : 'ORDER BY PREDICTED_CHURN_PROBABILITY DESC';
 
+    const whereClauses: string[] = ['UPPER(cohort) = :cohortName'];
+    const usersParams: {
+      cohortName: string;
+      offset?: number;
+      limit?: number;
+      minLtv?: number;
+      maxLtv?: number;
+    } = {
+      cohortName,
+    };
+
+    if (atRiskOnly) {
+      whereClauses.push('PREDICTED_CHURN_LABEL = 1');
+    }
+
+    if (minLtv !== undefined) {
+      whereClauses.push('LIFETIME_VALUE >= :minLtv');
+      usersParams.minLtv = minLtv;
+    }
+
+    if (maxLtv !== undefined) {
+      whereClauses.push('LIFETIME_VALUE <= :maxLtv');
+      usersParams.maxLtv = maxLtv;
+    }
+
     let usersQuery = `
       ${cohortAssignmentsCTE}
       SELECT 
@@ -146,13 +210,15 @@ router.get('/:name', async (req, res) => {
         LIFETIME_VALUE,
         COUNT(*) OVER() AS total_count
       FROM cohort_assignments
-      WHERE UPPER(cohort) = :cohortName
+      WHERE ${whereClauses.join('\n        AND ')}
       ${orderBy}
     `;
 
     // Add pagination only if limit != -1
     if (limit !== -1) {
       usersQuery += ` OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`;
+      usersParams.offset = offset;
+      usersParams.limit = limit;
     }
 
     const usersResult = await executeQuery<{
@@ -160,13 +226,14 @@ router.get('/:name', async (req, res) => {
       PREDICTED_CHURN_PROBABILITY: number;
       LIFETIME_VALUE: number;
       TOTAL_COUNT: number;
-    }>(usersQuery, limit === -1 
-      ? { cohortName }
-      : { cohortName, offset, limit }
-    );
+    }>(usersQuery, usersParams);
 
     // Format response
-    const users = (usersResult.rows || []).map((row) => ({
+    const users = (usersResult.rows || []).map((row: {
+      USER_ID: string;
+      PREDICTED_CHURN_PROBABILITY: number;
+      LIFETIME_VALUE: number;
+    }) => ({
       userId: row.USER_ID,
       churnProbability: Math.round(row.PREDICTED_CHURN_PROBABILITY * 10000) / 10000, // Keep 4 decimals
       ltv: Math.round(row.LIFETIME_VALUE * 100) / 100, // 2 decimals
