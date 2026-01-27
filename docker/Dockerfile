@@ -3,7 +3,9 @@ WORKDIR /app
 
 # Accept build-time environment variables for Next.js
 ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL=$NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL
 
 COPY package*.json ./
 RUN npm ci
@@ -16,7 +18,7 @@ ENV ORACLE_CLIENT_LIB_DIR=/opt/oracle/instantclient_23_26
 RUN apt-get update && apt-get install -y libaio1
 
 # Build both Next.js and API server
-# NEXT_PUBLIC_API_URL will be embedded into the Next.js bundle
+# NEXT_PUBLIC_* variables will be embedded into the Next.js bundle
 RUN npm run build
 RUN npm run server:build
 

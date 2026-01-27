@@ -30,16 +30,31 @@ if ! grep -q "NEXT_PUBLIC_API_URL=" .env.oci; then
   fi
 fi
 
+# Optional but recommended: check for agentic flow webhook URL
+if ! grep -q "NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL=" .env.oci; then
+  echo "⚠️  WARNING: NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL not found in .env.oci"
+  echo "   The VIP agentic flow Proceed button will be hidden in production."
+  echo ""
+else
+  echo "📎 Agentic flow webhook configured in .env.oci:"
+  grep "NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL=" .env.oci
+fi
+
 # Show current configuration
 echo "📋 Configuration:"
 grep "NEXT_PUBLIC_API_URL=" .env.oci || echo "   NEXT_PUBLIC_API_URL: (not set)"
+grep "NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL=" .env.oci || echo "   NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL: (not set)"
 echo ""
 
 # Export build-time variables from .env.oci
-# This is required because build.args in podman-compose.yml reads from shell environment
+# This is required because build.args in podman-compose.yml read from the shell environment
 echo "📤 Exporting build-time variables..."
 export $(grep "^NEXT_PUBLIC_API_URL=" .env.oci | xargs)
+if grep -q "^NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL=" .env.oci; then
+  export $(grep "^NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL=" .env.oci | xargs)
+fi
 echo "✅ NEXT_PUBLIC_API_URL exported: $NEXT_PUBLIC_API_URL"
+echo "✅ NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL exported: ${NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL:-<not set>}"
 echo ""
 
 # Step 1: Stop existing container
