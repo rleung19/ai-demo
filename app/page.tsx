@@ -172,6 +172,8 @@ export default function Home() {
   const [kpi1Data, setKpi1Data] = useState<KPIDetailData | null>(null);
   const [isLoadingKPI1, setIsLoadingKPI1] = useState(true);
   const [usingFallbackData, setUsingFallbackData] = useState(false);
+  const [isBannerDismissed, setIsBannerDismissed] = useState(false);
+  const [showOnlyAlerts, setShowOnlyAlerts] = useState(false);
   
   // Use ref to prevent double calls in StrictMode
   const hasFetchedKPI1 = useRef(false);
@@ -299,8 +301,13 @@ export default function Home() {
     return match ? parseInt(match[1], 10) : Infinity;
   };
 
-  // Filter KPIs by role and time period
+  // Filter KPIs by role, time period, and alert status
   const filteredKPIs = kpiCards.filter((kpi) => {
+    // Alert filter - if showOnlyAlerts is true, only show KPIs with alert status
+    if (showOnlyAlerts && kpi.status !== 'alert') {
+      return false;
+    }
+
     // Role filter
     const roleMatch = selectedRole === 'all' || 
       kpi.owners.some((owner) => owner.toLowerCase() === selectedRole.toLowerCase());
@@ -504,7 +511,7 @@ export default function Home() {
                 AI/ML Executive Dashboard
               </h1>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                B2C Fashion E-commerce • January 2026
+                SHE SHOP E-Commerce • January 2026
               </p>
             </div>
           </div>
@@ -589,6 +596,27 @@ export default function Home() {
               ))}
             </div>
 
+            {/* Alert Filter Indicator */}
+            {showOnlyAlerts && (
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold"
+                style={{
+                  backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                  border: '1px solid rgba(249, 115, 22, 0.3)',
+                  color: '#f59e0b',
+                }}
+              >
+                <span>⚠️ Showing Alerts Only</span>
+                <button
+                  onClick={() => setShowOnlyAlerts(false)}
+                  className="ml-1 hover:opacity-70 transition-opacity"
+                  aria-label="Clear alert filter"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
@@ -614,49 +642,53 @@ export default function Home() {
         </header>
 
         {/* Alert Banner */}
-        <div
-          className="rounded-2xl p-5 mb-6 flex items-center gap-4"
-          style={{
-            background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(244, 63, 94, 0.15) 100%)',
-            border: '1px solid rgba(249, 115, 22, 0.3)',
-          }}
-        >
-          <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-rose-500 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
-            ⚠️
+        {!isBannerDismissed && (
+          <div
+            className="rounded-2xl p-5 mb-6 flex items-center gap-4"
+            style={{
+              background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(244, 63, 94, 0.15) 100%)',
+              border: '1px solid rgba(249, 115, 22, 0.3)',
+            }}
+          >
+            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-rose-500 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
+              ⚠️
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold mb-1" style={{ color: '#f59e0b' }}>
+                5 KPIs Require Attention
+              </h3>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Churn Risk, Stockout Probability, Return Rate, Email Decay, and Supply Chain Risk are
+                showing yellow alerts. Immediate action recommended.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowOnlyAlerts(true)}
+                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+              >
+                Review Now
+              </button>
+              <button
+                onClick={() => setIsBannerDismissed(true)}
+                className="px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                style={{
+                  backgroundColor: 'var(--bg-card)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-secondary)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--bg-card)';
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold mb-1" style={{ color: '#f59e0b' }}>
-              5 KPIs Require Attention
-            </h3>
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Churn Risk, Stockout Probability, Return Rate, Email Decay, and Supply Chain Risk are
-              showing yellow alerts. Immediate action recommended.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
-            >
-              Review Now
-            </button>
-            <button
-              className="px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-              style={{
-                backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-secondary)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bg-card)';
-              }}
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
+        )}
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
