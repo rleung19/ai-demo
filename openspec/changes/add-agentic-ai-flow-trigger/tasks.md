@@ -78,3 +78,10 @@
   - Verify button is focusable and labeled.
   - Verify banner is announced to screen readers (ARIA live region).
 
+## 7. API Documentation (Swagger / OpenAPI)
+- [x] 7.1 Update the OpenAPI spec in `server/openapi.ts` for the cohort detail endpoint (`/api/kpi/churn/cohorts/{name}`) to reflect:
+  - `limit` default = 3 (example: 3).
+  - New query parameters: `atRiskOnly` (default: true), `minLtv`, `maxLtv` with validation rules.
+  - Updated response examples where `pagination.limit` reflects the new default of 3.
+- [x] 7.2 Verify that Swagger UI (`/api-docs`) shows the new query parameters and default values, and that the "Try it out" feature uses them correctly.
+

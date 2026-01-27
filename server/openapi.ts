@@ -269,13 +269,13 @@ export function generateOpenApiSpec(req?: Request) {
             name: 'limit',
             in: 'query',
             required: false,
-            description: 'Number of users per page (1-500, or -1 for all users)',
+            description: 'Number of users per page (1-500, or -1 for all users). Defaults to 3.',
             schema: {
               type: 'integer',
               minimum: -1,
               maximum: 500,
-              default: 50,
-              example: 50,
+              default: 3,
+              example: 3,
             },
           },
           {
@@ -300,6 +300,42 @@ export function generateOpenApiSpec(req?: Request) {
               enum: ['churn', 'ltv'],
               default: 'churn',
               example: 'churn',
+            },
+          },
+          {
+            name: 'atRiskOnly',
+            in: 'query',
+            required: false,
+            description:
+              'When true (default), filter the users list to only include at-risk customers (PREDICTED_CHURN_LABEL = 1).',
+            schema: {
+              type: 'boolean',
+              default: true,
+              example: true,
+            },
+          },
+          {
+            name: 'minLtv',
+            in: 'query',
+            required: false,
+            description:
+              'Minimum lifetime value (inclusive) for users in the users list. Must be a non-negative number when provided.',
+            schema: {
+              type: 'number',
+              minimum: 0,
+              example: 5000,
+            },
+          },
+          {
+            name: 'maxLtv',
+            in: 'query',
+            required: false,
+            description:
+              'Maximum lifetime value (inclusive) for users in the users list. Must be a non-negative number when provided, and should be greater than or equal to minLtv when both are present.',
+            schema: {
+              type: 'number',
+              minimum: 0,
+              example: 20000,
             },
           },
         ],
@@ -338,7 +374,7 @@ export function generateOpenApiSpec(req?: Request) {
                       type: 'object',
                       properties: {
                         total: { type: 'integer', example: 976 },
-                        limit: { type: 'integer', example: 50 },
+                        limit: { type: 'integer', example: 3 },
                         offset: { type: 'integer', example: 0 },
                       },
                     },
@@ -368,7 +404,7 @@ export function generateOpenApiSpec(req?: Request) {
                   ],
                   pagination: {
                     total: 976,
-                    limit: 50,
+                    limit: 3,
                     offset: 0,
                   },
                 },
