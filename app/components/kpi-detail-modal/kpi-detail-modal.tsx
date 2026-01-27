@@ -665,6 +665,12 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
               {actions.map((action) => {
                 const isVipAgenticCard =
                   metadata.id === 1 && action.id === '1' && isVipAgenticEnabled;
+                const isOtherAction = metadata.id === 1 && action.id !== '1';
+                
+                const handleFakeProceed = () => {
+                  window.alert(`"Proceed" functionality for "${action.title}" is coming soon.`);
+                };
+                
                 return (
                   <div
                     key={action.id}
@@ -743,20 +749,28 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
                           </span>
                         )}
                       </div>
-                      {isVipAgenticCard && (
+                      {(isVipAgenticCard || isOtherAction) && (
                         <button
                           type="button"
-                          onClick={handleVipProceed}
-                          disabled={vipFlowLoading}
+                          onClick={isVipAgenticCard ? handleVipProceed : handleFakeProceed}
+                          disabled={isVipAgenticCard && vipFlowLoading}
                           className="mt-3 md:mt-0 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors"
                           style={{
-                            backgroundColor: vipFlowLoading ? 'rgba(15, 118, 110, 0.6)' : '#0f766e',
+                            backgroundColor: isVipAgenticCard && vipFlowLoading 
+                              ? 'rgba(15, 118, 110, 0.6)' 
+                              : isVipAgenticCard 
+                                ? '#0f766e'
+                                : '#6b7280',
                             color: '#ecfeff',
-                            opacity: vipFlowLoading ? 0.8 : 1,
+                            opacity: (isVipAgenticCard && vipFlowLoading) ? 0.8 : 1,
                           }}
-                          aria-label="Proceed with VIP re-engagement campaign"
+                          aria-label={
+                            isVipAgenticCard 
+                              ? 'Proceed with VIP re-engagement campaign'
+                              : `Proceed with ${action.title}`
+                          }
                         >
-                          {vipFlowLoading ? 'Processing…' : 'Proceed'}
+                          {isVipAgenticCard && vipFlowLoading ? 'Processing…' : 'Proceed'}
                         </button>
                       )}
                     </div>

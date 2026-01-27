@@ -50,6 +50,10 @@ router.get('/', async (req, res) => {
         COUNT(*) AS customer_count,
         SUM(CASE WHEN PREDICTED_CHURN_LABEL = 1 THEN 1 ELSE 0 END) AS at_risk_count,
         ROUND(AVG(PREDICTED_CHURN_PROBABILITY) * 100, 2) AS avg_risk_score,
+        ROUND(
+          AVG(CASE WHEN PREDICTED_CHURN_LABEL = 1 THEN PREDICTED_CHURN_PROBABILITY END) * 100,
+          2
+        ) AS avg_risk_score_at_risk,
         SUM(CASE WHEN PREDICTED_CHURN_LABEL = 1 THEN LIFETIME_VALUE ELSE 0 END) AS ltv_at_risk
       FROM cohort_assignments
       WHERE cohort != 'Other'
@@ -69,6 +73,7 @@ router.get('/', async (req, res) => {
       CUSTOMER_COUNT: number;
       AT_RISK_COUNT: number;
       AVG_RISK_SCORE: number;
+      AVG_RISK_SCORE_AT_RISK: number | null;
       LTV_AT_RISK: number;
     }>(cohortsQuery);
 
@@ -77,6 +82,7 @@ router.get('/', async (req, res) => {
       CUSTOMER_COUNT: number;
       AT_RISK_COUNT: number;
       AVG_RISK_SCORE: number;
+      AVG_RISK_SCORE_AT_RISK: number | null;
       LTV_AT_RISK: number;
     }) => ({
       cohort: row.COHORT,
@@ -86,6 +92,7 @@ router.get('/', async (req, res) => {
         ? Math.round((row.AT_RISK_COUNT / row.CUSTOMER_COUNT) * 10000) / 100
         : 0,
       averageRiskScore: row.AVG_RISK_SCORE,
+      averageRiskScoreAtRisk: row.AVG_RISK_SCORE_AT_RISK ?? 0,
       ltvAtRisk: Math.round(row.LTV_AT_RISK * 100) / 100,
     }));
 

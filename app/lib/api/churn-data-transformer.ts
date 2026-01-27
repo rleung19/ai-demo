@@ -57,6 +57,179 @@ function formatDate(dateString: string | null): string {
 }
 
 /**
+ * Build dynamic business impact from summary data.
+ * Calculates revenue impact from totalLTVAtRisk, estimates cost impact, and calculates ROI.
+ * 
+ * Note: LTV (Lifetime Value) is estimated as 2x the total spent in the last 24 months,
+ * representing projected future value. For Revenue Impact, we use a conservative recovery
+ * estimate (30-40% of LTV) since not all churn can be prevented.
+ */
+function buildImpactFromData(
+  summary: ChurnSummary | null
+): KPIDetailData['impact'] | null {
+  if (!summary || summary.totalLTVAtRisk === undefined || summary.totalLTVAtRisk === null) {
+    return null;
+  }
+
+  // LTV is projected future value (2x 24-month spending)
+  // For Revenue Impact, use a conservative recovery estimate: 35% of LTV at risk
+  // This represents recoverable revenue if retention campaigns are successful
+  // (Not all churn can be prevented, and not all LTV is immediately recoverable)
+  const RECOVERY_RATE = 0.35;
+  const revenueImpact = summary.totalLTVAtRisk * RECOVERY_RATE;
+
+  // Cost impact: Estimate as ~7.5% of recoverable revenue (typical for retention campaigns)
+  // This represents the cost of interventions (discounts, outreach, etc.)
+  const costImpact = revenueImpact * 0.075;
+
+  // ROI calculation: (Revenue Impact - Cost Impact) / Cost Impact * 100
+  const roi = costImpact > 0 ? ((revenueImpact - costImpact) / costImpact) * 100 : 0;
+
+  return {
+    revenueImpact,
+    costImpact,
+    roi: Math.round(roi),
+    description: `Net ROI: ${Math.round(roi)}% (Recovery - Cost) / Cost. Based on 35% recovery rate of LTV at risk.`,
+  };
+}
+
+/**
+ * Build dynamic recommended actions from risk factors and cohort data.
+ * Replaces static numbers with actual data from the API.
+ */
+function buildActionsFromData(
+  riskFactors: RiskFactor[] | null,
+  cohorts: ChurnCohort[] | null,
+  summary: ChurnSummary | null
+): KPIDetailData['actions'] {
+  const baseActions = kpi1ChurnRiskData.actions;
+  
+  if (!riskFactors || riskFactors.length === 0) {
+    return baseActions;
+  }
+
+  // Find specific risk factors
+  const sizingIssues = riskFactors.find((rf) =>
+    rf.riskFactor.toLowerCase().includes('size') || rf.riskFactor.toLowerCase().includes('fit')
+  );
+  const emailDecay = riskFactors.find((rf) =>
+    rf.riskFactor.toLowerCase().includes('email') || rf.riskFactor.toLowerCase().includes('engagement')
+  );
+  const noPurchase = riskFactors.find((rf) =>
+    rf.riskFactor.toLowerCase().includes('purchase') || rf.riskFactor.toLowerCase().includes('dormant')
+  );
+
+  // Find cohort data
+  const vipCohort = cohorts?.find((c) => c.cohort === 'VIP');
+  const dormantCohort = cohorts?.find((c) => c.cohort === 'Dormant');
+
+  // Transform actions with real data
+  return baseActions.map((action) => {
+    // Action #2: Address Sizing Issues
+    if (action.id === '2' && sizingIssues) {
+      return {
+        ...action,
+        title: `Address Sizing Issues for ${formatNumber(sizingIssues.affectedCustomers)} Customers`,
+        description: `Proactive outreach to ${formatNumber(sizingIssues.affectedCustomers)} customers with 2+ size-related returns. Offer free exchange, size guide consultation, and $20 credit for next purchase.`,
+      };
+    }
+
+    // Action #3: Win-back Email Sequence for Dormant Segment
+    if (action.id === '3') {
+      // Prioritize actual dormant cohort data - use customerCount (total dormant) for win-back campaign
+      // Only fall back to risk factor or static data if cohort is not available
+      const dormantCount = dormantCohort?.customerCount || dormantCohort?.atRiskCount || noPurchase?.affectedCustomers || 97;
+      return {
+        ...action,
+        title: `Win-back Email Sequence for ${formatNumber(dormantCount)} Dormant Customers`,
+        description: `Deploy 4-email sequence for ${formatNumber(dormantCount)} dormant customers: "We miss you" → Product recommendations → Exclusive offer → Final reminder with urgency.`,
+      };
+    }
+
+    // Action #1: Launch VIP Re-engagement Campaign
+    if (action.id === '1' && vipCohort) {
+      const vipAtRiskCount = vipCohort.atRiskCount || 150;
+      return {
+        ...action,
+        title: `Launch VIP Re-engagement Campaign`,
+        description: `Target ${formatNumber(vipAtRiskCount)} VIP customers with personalized 20% discount on AI selected products that each customer will likely to buy. Include dedicated stylist consultation offer.`,
+      };
+    }
+
+    // Action #4: High-Touch Outreach for Top VIPs
+    if (action.id === '4' && vipCohort) {
+      const topVipCount = Math.min(50, vipCohort.atRiskCount || 50);
+      return {
+        ...action,
+        title: `High-Touch Outreach for Top ${formatNumber(topVipCount)} VIPs`,
+        description: `Personal phone calls from customer success team to ${formatNumber(topVipCount)} highest-value at-risk customers. Collect feedback and offer exclusive preview access.`,
+      };
+    }
+
+    return action;
+  });
+}
+
+/**
+ * Build dynamic AI model insight from risk factors (if available).
+ * Falls back to static insight when no usable risk factors are present.
+ */
+function buildInsightFromRiskFactors(
+  riskFactors: RiskFactor[] | null
+): KPIDetailData['insight'] | null {
+  if (!riskFactors || riskFactors.length === 0) {
+    return null;
+  }
+
+  // Parse impact scores and keep only factors with a valid numeric score
+  const factorsWithScore = riskFactors
+    .map((rf) => {
+      const numericScore = parseFloat(String(rf.impactScore).replace('%', '').trim());
+      return {
+        ...rf,
+        numericScore: Number.isFinite(numericScore) ? numericScore : 0,
+      };
+    })
+    .filter((rf) => rf.numericScore > 0);
+
+  if (factorsWithScore.length === 0) {
+    return null;
+  }
+
+  // Sort by impact descending and take the top few factors
+  factorsWithScore.sort((a, b) => b.numericScore - a.numericScore);
+  const topFactors = factorsWithScore.slice(0, 3);
+  const primary = topFactors[0];
+
+  const factorNames = topFactors.map((f) => f.riskFactor).join(' + ');
+
+  // Collect unique primary segments from the top factors
+  const affectedSegments = Array.from(
+    new Set(
+      topFactors
+        .map((f) => f.primarySegment)
+        .join(', ')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    )
+  );
+
+  const segmentsText =
+    affectedSegments.length > 0
+      ? ` These signals primarily affect ${affectedSegments.join(', ')} segments.`
+      : '';
+
+  return {
+    title: '🧠 AI Model Insight',
+    content: `The churn prediction model currently ranks ${factorNames} as the strongest predictors of churn, with top impact scores up to ${primary.numericScore.toFixed(
+      0
+    )}%.${segmentsText}`,
+    type: 'info',
+  };
+}
+
+/**
  * Transform API data to KPI #1 data format
  */
 export function transformChurnDataToKPI(
@@ -132,10 +305,22 @@ export function transformChurnDataToKPI(
     if (cohort.averageRiskScore >= 50) riskLevel = 'high';
     else if (cohort.averageRiskScore >= 30) riskLevel = 'medium';
 
+    // Build at-risk label with churn probability if available
+    let atRiskLabel = formatNumber(cohort.atRiskCount);
+    if (
+      cohort.atRiskCount > 0 &&
+      typeof cohort.averageRiskScoreAtRisk === 'number' &&
+      !isNaN(cohort.averageRiskScoreAtRisk)
+    ) {
+      atRiskLabel = `${atRiskLabel} at-risk (${formatPercentage(cohort.averageRiskScoreAtRisk, 1)} Chance)`;
+    } else {
+      atRiskLabel = `${atRiskLabel} at-risk`;
+    }
+
     return {
       name: `${cohort.cohort} Customers`,
       value: formatPercentage(cohort.averageRiskScore),
-      label: `${formatNumber(cohort.customerCount)} total\n${formatNumber(cohort.atRiskCount)} at-risk\n${formatCurrency(
+      label: `${formatNumber(cohort.customerCount)} total\n${atRiskLabel}\n${formatCurrency(
         cohort.ltvAtRisk
       )} LTV at Risk`,
       riskLevel,
@@ -175,6 +360,9 @@ export function transformChurnDataToKPI(
     }
   }
 
+  // Prefer dynamic insight based on risk factors when available; otherwise fall back to static copy
+  const dynamicInsight = buildInsightFromRiskFactors(riskFactors);
+
   return {
     metadata: {
       id: 1,
@@ -210,6 +398,33 @@ export function transformChurnDataToKPI(
     chartData: transformedChartData,
     chartOptions: {
       ...kpi1ChurnRiskData.chartOptions,
+      plugins: {
+        ...(kpi1ChurnRiskData.chartOptions?.plugins || {}),
+        tooltip: {
+          ...(kpi1ChurnRiskData.chartOptions?.plugins?.tooltip || {}),
+          callbacks: {
+            ...(kpi1ChurnRiskData.chartOptions?.plugins?.tooltip?.callbacks || {}),
+            label: function (context: any) {
+              const datasetLabel = context.dataset.label || '';
+              const value = context.parsed.y ?? context.parsed;
+              const baseLabel = datasetLabel ? `${datasetLabel}: ${value.toFixed(1)}%` : `${value.toFixed(1)}%`;
+
+              const index = context.dataIndex;
+              const cohort = cohorts[index];
+              if (
+                cohort &&
+                typeof cohort.averageRiskScoreAtRisk === 'number' &&
+                cohort.atRiskCount > 0
+              ) {
+                const atRiskLabel = formatPercentage(cohort.averageRiskScoreAtRisk, 1);
+                return `${baseLabel} (Avg at-risk churn: ${atRiskLabel})`;
+              }
+
+              return baseLabel;
+            },
+          },
+        },
+      },
       scales: {
         x: {
           grid: { display: false },
@@ -252,8 +467,8 @@ export function transformChurnDataToKPI(
           primarySegment: rf.primarySegment,
         }))
       : kpi1ChurnRiskData.tableData, // Use API data if available, otherwise fallback to static
-    actions: kpi1ChurnRiskData.actions,
-    impact: kpi1ChurnRiskData.impact,
-    insight: kpi1ChurnRiskData.insight,
+    actions: buildActionsFromData(riskFactors, cohorts, summary),
+    impact: buildImpactFromData(summary) ?? kpi1ChurnRiskData.impact,
+    insight: dynamicInsight ?? kpi1ChurnRiskData.insight,
   };
 }

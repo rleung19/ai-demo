@@ -42,6 +42,7 @@ export interface ChurnCohort {
   atRiskCount: number;
   atRiskPercentage: number;
   averageRiskScore: number;
+  averageRiskScoreAtRisk: number;
   ltvAtRisk: number;
 }
 

@@ -12,7 +12,7 @@ const kpiCards = [
     id: 1,
     title: 'Churn Risk Score (Cohort)',
     owners: ['CMO', 'COO'],
-    horizon: '60-90 Days',
+    horizon: '30-60 Days',
     primaryMetric: '247',
     primaryLabel: 'At-Risk Customers',
     secondaryMetric: '68%',
@@ -290,10 +290,39 @@ export default function Home() {
     setKpiData(null);
   };
 
-  // Filter KPIs by role
+  // Helper function to extract minimum days from horizon string
+  const getMinDaysFromHorizon = (horizon: string): number => {
+    if (horizon.toLowerCase() === 'real-time') return 0;
+    
+    // Extract numbers from horizon string (e.g., "7-14 Days" -> 7, "60-90 Days" -> 60)
+    const match = horizon.match(/(\d+)/);
+    return match ? parseInt(match[1], 10) : Infinity;
+  };
+
+  // Filter KPIs by role and time period
   const filteredKPIs = kpiCards.filter((kpi) => {
-    if (selectedRole === 'all') return true;
-    return kpi.owners.some((owner) => owner.toLowerCase() === selectedRole.toLowerCase());
+    // Role filter
+    const roleMatch = selectedRole === 'all' || 
+      kpi.owners.some((owner) => owner.toLowerCase() === selectedRole.toLowerCase());
+    
+    if (!roleMatch) return false;
+
+    // Time filter
+    const minDays = getMinDaysFromHorizon(kpi.horizon);
+    
+    switch (selectedTime) {
+      case '7d':
+        // Show KPIs with horizons starting at 7 days or less
+        return minDays <= 7;
+      case '30d':
+        // Show KPIs with horizons starting at 30 days or less
+        return minDays <= 30;
+      case '90d':
+        // Show all KPIs (90d is the longest filter)
+        return true;
+      default:
+        return true;
+    }
   });
 
   // Generate mini chart data for each KPI - matching HTML file exactly
@@ -691,7 +720,9 @@ export default function Home() {
               </span>
             </div>
             <div className="text-3xl font-bold font-mono mb-1" style={{ color: 'var(--text-primary)' }}>
-              $320K
+              {kpi1Data?.impact?.revenueImpact
+                ? `$${Math.abs(kpi1Data.impact.revenueImpact / 1000).toFixed(0)}K`
+                : '$320K'}
             </div>
             <div className="text-sm text-rose-500 flex items-center gap-1">
               <span>↓</span> Action needed in 14 days
