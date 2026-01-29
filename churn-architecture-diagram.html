@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Churn Model Architecture</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    svg {
+      width: 100%;
+      height: auto;
+    }
+    .table-box {
+      fill: #e1f5ff;
+      stroke: #0277bd;
+      stroke-width: 2;
+    }
+    .process-box {
+      fill: #fff4e1;
+      stroke: #f57c00;
+      stroke-width: 2;
+    }
+    .model-box {
+      fill: #e8f5e9;
+      stroke: #388e3c;
+      stroke-width: 2;
+    }
+    .api-box {
+      fill: #f3e5f5;
+      stroke: #7b1fa2;
+      stroke-width: 2;
+    }
+    .text-title {
+      font-weight: bold;
+      font-size: 16px;
+      fill: #333;
+    }
+    .text-field {
+      font-size: 14px;
+      fill: #555;
+    }
+    .arrow {
+      stroke: #666;
+      stroke-width: 2;
+      fill: none;
+      marker-end: url(#arrowhead);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Churn Model Architecture</h1>
+    <svg viewBox="0 0 1600 700" xmlns="http://www.w3.org/2000/svg">
+      <!-- Arrow marker definition -->
+      <defs>
+        <marker
+          id="arrowhead"
+          markerWidth="10"
+          markerHeight="10"
+          refX="9"
+          refY="3"
+          orient="auto"
+        >
+          <polygon points="0 0, 10 3, 0 6" fill="#666" />
+        </marker>
+      </defs>
+
+      <!-- Source Tables -->
+      <rect x="40" y="80" width="260" height="260" class="table-box" rx="5" />
+      <text
+        x="170"
+        y="105"
+        text-anchor="middle"
+        class="text-title"
+      >
+        User Profiles
+      </text>
+      <text x="50" y="150" class="text-field">• USER_ID</text>
+      <text x="50" y="170" class="text-field">• LIFETIME_VALUE</text>
+      <text x="50" y="190" class="text-field">• MEMBERSHIP_YEARS</text>
+      <text x="50" y="210" class="text-field">• TOTAL_PURCHASES</text>
+      <text x="50" y="230" class="text-field">• DAYS_SINCE_LAST_PURCHASE</text>
+      <text x="50" y="250" class="text-field">• LOGIN_FREQUENCY</text>
+      <text x="50" y="270" class="text-field">• EMAIL_OPEN_RATE</text>
+      <text x="50" y="290" class="text-field">• CART_ABANDONMENT_RATE</text>
+      <text x="50" y="310" class="text-field">• RETURNS_RATE</text>
+      <text x="50" y="330" class="text-field">• CUSTOMER_SERVICE_CALLS</text>
+
+      <rect x="40" y="380" width="260" height="150" class="table-box" rx="5" />
+      <text
+        x="170"
+        y="405"
+        text-anchor="middle"
+        class="text-title"
+      >
+        User Accounts
+      </text>
+      <text x="50" y="445" class="text-field">• ID (USER_ID)</text>
+      <text x="50" y="465" class="text-field">• AFFINITY_CARD</text>
+      <text x="50" y="485" class="text-field">• EMAIL</text>
+      <text x="50" y="505" class="text-field">• COUNTRY / REGION</text>
+
+      <!-- Churn Feature & Cohort View -->
+      <rect x="380" y="180" width="300" height="230" class="table-box" rx="5" />
+      <text
+        x="530"
+        y="205"
+        text-anchor="middle"
+        class="text-title"
+      >
+        Churn Features &amp; Cohorts
+      </text>
+      <text x="390" y="245" class="text-field">• USER_ID</text>
+      <text x="390" y="265" class="text-field">• COHORT (VIP, New, Regular, Dormant)</text>
+      <text x="390" y="285" class="text-field">• BEHAVIOR FEATURES</text>
+      <text x="390" y="305" class="text-field">• ENGAGEMENT FEATURES</text>
+      <text x="390" y="325" class="text-field">• VALUE FEATURES (LTV, purchases)</text>
+      <text x="390" y="345" class="text-field">• TRAIN / TEST SPLIT</text>
+
+      <!-- Churn Model Training & Scoring -->
+      <rect x="750" y="160" width="290" height="260" class="process-box" rx="5" />
+      <text
+        x="895"
+        y="190"
+        text-anchor="middle"
+        class="text-title"
+      >
+        Churn Model (XGBoost)
+      </text>
+      <text x="760" y="235" class="text-field">• Train classification model</text>
+      <text x="760" y="255" class="text-field">• Optimize threshold for churn</text>
+      <text x="760" y="275" class="text-field">• Evaluate AUC, accuracy, F1</text>
+      <text x="760" y="295" class="text-field">• Register model in MODEL_REGISTRY</text>
+      <text x="760" y="315" class="text-field">• Batch score to CHURN_PREDICTIONS</text>
+      <text x="760" y="335" class="text-field">• Update KPIs on schedule</text>
+
+      <!-- Churn KPI Data (Predictions + Registry) -->
+      <rect x="1130" y="140" width="320" height="220" class="model-box" rx="5" />
+      <text
+        x="1290"
+        y="170"
+        text-anchor="middle"
+        class="text-title"
+      >
+        Churn KPI Data
+      </text>
+      <text x="1140" y="215" class="text-field">• USER_ID</text>
+      <text x="1140" y="235" class="text-field">• PREDICTED_CHURN_LABEL</text>
+      <text x="1140" y="255" class="text-field">• PREDICTED_CHURN_PROBABILITY</text>
+      <text x="1140" y="275" class="text-field">• MODEL_ID, MODEL_VERSION</text>
+      <text x="1140" y="295" class="text-field">• AUC, accuracy, precision, recall, F1</text>
+      <text x="1140" y="315" class="text-field">• OPTIMAL_THRESHOLD, TRAINING_DATE</text>
+
+      <!-- Churn KPI API -->
+      <rect x="1130" y="390" width="320" height="190" class="api-box" rx="5" />
+      <text
+        x="1290"
+        y="420"
+        text-anchor="middle"
+        class="text-title"
+      >
+        Churn KPI API
+      </text>
+      <text x="1140" y="465" class="text-field">• /api/kpi/churn/summary</text>
+      <text x="1140" y="485" class="text-field">• /api/kpi/churn/cohorts</text>
+      <text x="1140" y="505" class="text-field">• /api/kpi/churn/metrics</text>
+      <text x="1140" y="525" class="text-field">• /api/kpi/churn/chart-data</text>
+      <text x="1140" y="545" class="text-field">• /api/kpi/churn/risk-factors</text>
+
+      <!-- Arrows (straight) -->
+      <!-- From User Profiles to Churn Features -->
+      <path d="M 300 200 L 340 200 L 340 240 L 380 240" class="arrow" />
+      <!-- From User Accounts to Churn Features -->
+      <path d="M 300 440 L 340 440 L 340 320 L 380 320" class="arrow" />
+      <!-- From Churn Features to Churn Model -->
+      <path d="M 680 290 L 750 290" class="arrow" />
+      <!-- From Churn Model to Churn KPI Data -->
+      <path d="M 1040 290 L 1130 290" class="arrow" />
+      <!-- From Churn KPI Data to Churn KPI API -->
+      <path d="M 1290 360 L 1290 390" class="arrow" />
+    </svg>
+
+    <div
+      style="
+        margin-top: 30px;
+        padding: 20px;
+        background: #f9f9f9;
+        border-radius: 5px;
+      "
+    >
+      <h2 style="color: #333; margin-top: 0;">Overview</h2>
+      <ol style="line-height: 1.8; color: #555;">
+        <li>
+          <strong>Source Data:</strong> Churn features are built from
+          <code>OML.USER_PROFILES</code> (behavior, engagement, value signals)
+          joined with <code>ADMIN.USERS</code> (account details such as
+          affinity card).
+        </li>
+        <li>
+          <strong>Churn Features &amp; Cohorts:</strong> Users are assigned
+          to cohorts such as VIP, New, Regular, and Dormant and enriched
+          with behavior, engagement, and value features for model training.
+        </li>
+        <li>
+          <strong>Churn Model:</strong> A locally trained XGBoost binary
+          classification model is evaluated (AUC, accuracy, F1, etc.),
+          registered in the registry, and used for batch scoring into
+          <code>OML.CHURN_PREDICTIONS</code>.
+        </li>
+        <li>
+          <strong>Churn KPI Data:</strong> Predictions and model metrics are
+          stored in <code>OML.CHURN_PREDICTIONS</code> and
+          <code>OML.MODEL_REGISTRY</code>, providing the backend data for
+          KPIs and charts.
+        </li>
+        <li>
+          <strong>Churn KPI API:</strong> The Express API reads from these
+          tables and exposes endpoints (summary, cohorts, metrics, chart data,
+          risk factors) consumed by the churn analytics UI.
+        </li>
+      </ol>
+    </div>
+  </div>
+</body>
+</html>
+

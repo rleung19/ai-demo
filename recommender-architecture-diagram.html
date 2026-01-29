@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recommender System Architecture</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        svg {
+            width: 100%;
+            height: auto;
+        }
+        .table-box {
+            fill: #e1f5ff;
+            stroke: #0277bd;
+            stroke-width: 2;
+        }
+        .operator-box {
+            fill: #fff4e1;
+            stroke: #f57c00;
+            stroke-width: 2;
+        }
+        .model-box {
+            fill: #e8f5e9;
+            stroke: #388e3c;
+            stroke-width: 2;
+        }
+        .api-box {
+            fill: #f3e5f5;
+            stroke: #7b1fa2;
+            stroke-width: 2;
+        }
+        .text-title {
+            font-weight: bold;
+            font-size: 16px;
+            fill: #333;
+        }
+        .text-field {
+            font-size: 14px;
+            fill: #555;
+        }
+        .arrow {
+            stroke: #666;
+            stroke-width: 2;
+            fill: none;
+            marker-end: url(#arrowhead);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Recommender System Architecture</h1>
+        <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+            <!-- Arrow marker definition -->
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                    <polygon points="0 0, 10 3, 0 6" fill="#666" />
+                </marker>
+            </defs>
+
+            <!-- Users Table -->
+            <rect x="50" y="50" width="200" height="280" class="table-box" rx="5"/>
+            <text x="150" y="75" text-anchor="middle" class="text-title">Users Table</text>
+            <text x="150" y="95" text-anchor="middle" class="text-title" style="font-size: 12px;">(Demographics)</text>
+            <text x="60" y="115" class="text-field">• user_id</text>
+            <text x="60" y="135" class="text-field">• gender</text>
+            <text x="60" y="155" class="text-field">• birth_year</text>
+            <text x="60" y="175" class="text-field">• income_level</text>
+            <text x="60" y="195" class="text-field">• education</text>
+            <text x="60" y="215" class="text-field">• occupation</text>
+            <text x="60" y="235" class="text-field">• household_size</text>
+            <text x="60" y="255" class="text-field">• marital_status</text>
+            <text x="60" y="275" class="text-field">• city, state</text>
+            <text x="60" y="295" class="text-field">• total_orders</text>
+            <text x="60" y="315" class="text-field">• total_spent</text>
+
+            <!-- Product Items Table -->
+            <rect x="50" y="370" width="200" height="200" class="table-box" rx="5"/>
+            <text x="150" y="395" text-anchor="middle" class="text-title">Product Items</text>
+            <text x="60" y="415" class="text-field">• product_id</text>
+            <text x="60" y="435" class="text-field">• product_name</text>
+            <text x="60" y="455" class="text-field">• category</text>
+            <text x="60" y="475" class="text-field">• category_name</text>
+            <text x="60" y="495" class="text-field">• price</text>
+            <text x="60" y="515" class="text-field">• avg_rating</text>
+            <text x="60" y="535" class="text-field">• num_reviews</text>
+            <text x="60" y="555" class="text-field">• recent_popularity</text>
+
+            <!-- Interactions Table -->
+            <rect x="50" y="610" width="200" height="130" class="table-box" rx="5"/>
+            <text x="150" y="635" text-anchor="middle" class="text-title">Interactions Table</text>
+            <text x="150" y="655" text-anchor="middle" class="text-title" style="font-size: 12px;">(Reviews &amp; Ratings)</text>
+            <text x="60" y="675" class="text-field">• user_id</text>
+            <text x="60" y="695" class="text-field">• product_id</text>
+            <text x="60" y="715" class="text-field">• rating</text>
+            <text x="60" y="735" class="text-field">• quantity, timestamp</text>
+
+            <!-- ADS Recommender Operator -->
+            <rect x="350" y="300" width="250" height="200" class="operator-box" rx="5"/>
+            <text x="475" y="330" text-anchor="middle" class="text-title">ADS Recommender</text>
+            <text x="475" y="350" text-anchor="middle" class="text-title">Operator</text>
+            <text x="360" y="375" class="text-field">• Processes user data</text>
+            <text x="360" y="395" class="text-field">• Processes item data</text>
+            <text x="360" y="415" class="text-field">• Processes interactions</text>
+            <text x="360" y="435" class="text-field">• Collaborative filtering</text>
+            <text x="360" y="455" class="text-field">• Model training</text>
+            <text x="360" y="475" class="text-field">• Generates recommendations</text>
+
+            <!-- Trained Model -->
+            <rect x="700" y="300" width="200" height="150" class="model-box" rx="5"/>
+            <text x="800" y="330" text-anchor="middle" class="text-title">Trained Model</text>
+            <text x="800" y="350" text-anchor="middle" class="text-title" style="font-size: 12px;">recommender_model.pkl</text>
+            <text x="710" y="375" class="text-field">• User-product mappings</text>
+            <text x="710" y="395" class="text-field">• Predicted ratings</text>
+            <text x="710" y="415" class="text-field">• Top-K recommendations</text>
+
+            <!-- API Endpoint -->
+            <rect x="1000" y="300" width="180" height="150" class="api-box" rx="5"/>
+            <text x="1090" y="330" text-anchor="middle" class="text-title">API Endpoint</text>
+            <text x="1090" y="350" text-anchor="middle" class="text-title" style="font-size: 12px;">Model Deployment</text>
+            <text x="1010" y="375" class="text-field">• REST API</text>
+            <text x="1010" y="395" class="text-field">• Input: user_id, top_k</text>
+            <text x="1010" y="415" class="text-field">• Output: recommendations</text>
+
+            <!-- Arrows (straightened) -->
+            <!-- From Users to Operator -->
+            <path d="M 250 190 L 320 190 L 320 380 L 350 380" class="arrow"/>
+            <!-- From Product Items to Operator -->
+            <path d="M 250 470 L 320 470 L 320 400 L 350 400" class="arrow"/>
+            <!-- From Interactions to Operator -->
+            <path d="M 250 675 L 320 675 L 320 420 L 350 420" class="arrow"/>
+            <!-- From Operator to Trained Model -->
+            <path d="M 600 400 L 700 400" class="arrow"/>
+            <!-- From Trained Model to API Endpoint -->
+            <path d="M 900 375 L 1000 375" class="arrow"/>
+        </svg>
+
+        <div style="margin-top: 30px; padding: 20px; background: #f9f9f9; border-radius: 5px;">
+            <h2 style="color: #333; margin-top: 0;">Data Flow</h2>
+            <ol style="line-height: 1.8; color: #555;">
+                <li><strong>Input Tables:</strong>
+                    <ul>
+                        <li><strong>Users Table</strong>: Contains user demographics and profile information (gender, age, income, education, location, purchase history)</li>
+                        <li><strong>Product Items Table</strong>: Contains product catalog information (name, category, price, ratings, reviews)</li>
+                        <li><strong>Interactions Table</strong>: Contains user-product interactions (reviews, ratings, purchases with timestamps)</li>
+                    </ul>
+                </li>
+                <li><strong>ADS Recommender Operator</strong>: Processes the three input tables, trains a collaborative filtering model, and generates recommendations for users</li>
+                <li><strong>Trained Model</strong>: Saved as <code>recommender_model.pkl</code>, contains user-product recommendation mappings with predicted ratings</li>
+                <li><strong>API Endpoint</strong>: Deployed model as a REST API that accepts user_id and top_k parameters and returns personalized product recommendations</li>
+            </ol>
+        </div>
+    </div>
+</body>
+</html>

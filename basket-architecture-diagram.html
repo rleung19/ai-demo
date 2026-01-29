@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basket Association Model Architecture (Apriori)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        svg {
+            width: 100%;
+            height: auto;
+        }
+        .table-box {
+            fill: #e1f5ff;
+            stroke: #0277bd;
+            stroke-width: 2;
+        }
+        .process-box {
+            fill: #fff4e1;
+            stroke: #f57c00;
+            stroke-width: 2;
+        }
+        .model-box {
+            fill: #e8f5e9;
+            stroke: #388e3c;
+            stroke-width: 2;
+        }
+        .api-box {
+            fill: #f3e5f5;
+            stroke: #7b1fa2;
+            stroke-width: 2;
+        }
+        .text-title {
+            font-weight: bold;
+            font-size: 16px;
+            fill: #333;
+        }
+        .text-field {
+            font-size: 14px;
+            fill: #555;
+        }
+        .arrow {
+            stroke: #666;
+            stroke-width: 2;
+            fill: none;
+            marker-end: url(#arrowhead);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Basket Association Model Architecture (Apriori)</h1>
+        <svg viewBox="0 0 1600 600" xmlns="http://www.w3.org/2000/svg">
+            <!-- Arrow marker definition -->
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                    <polygon points="0 0, 10 3, 0 6" fill="#666" />
+                </marker>
+            </defs>
+
+            <!-- Source Tables -->
+            <rect x="40" y="80" width="230" height="170" class="table-box" rx="5"/>
+            <text x="155" y="105" text-anchor="middle" class="text-title">Order Items</text>
+            <text x="155" y="125" text-anchor="middle" class="text-title" style="font-size: 13px;"></text>
+            <text x="50" y="145" class="text-field">• ORDER_ID</text>
+            <text x="50" y="165" class="text-field">• PRODUCT_ID</text>
+            <text x="50" y="185" class="text-field">• QUANTITY</text>
+
+            <rect x="40" y="280" width="230" height="150" class="table-box" rx="5"/>
+            <text x="155" y="305" text-anchor="middle" class="text-title">Orders</text>
+            <text x="155" y="325" text-anchor="middle" class="text-title" style="font-size: 13px;"></text>
+            <text x="50" y="345" class="text-field">• ID (ORDER_ID)</text>
+            <text x="50" y="365" class="text-field">• STATUS</text>
+            <text x="50" y="385" class="text-field">• CREATED_AT</text>
+
+            <!-- Basket / Transactions View -->
+            <rect x="360" y="160" width="260" height="190" class="table-box" rx="5"/>
+            <text x="490" y="185" text-anchor="middle" class="text-title">Basket Transactions</text>
+            <text x="490" y="205" text-anchor="middle" class="text-title" style="font-size: 13px;">(Aggregated per ORDER_ID)</text>
+            <text x="370" y="225" class="text-field">• ORDER_ID</text>
+            <text x="370" y="245" class="text-field">• PRODUCTS (comma list)</text>
+            <text x="370" y="265" class="text-field">• FILTER: non-cancelled</text>
+            <text x="370" y="285" class="text-field">• Only baskets &gt; 1 item</text>
+
+            <!-- Apriori / Association Rules Processing -->
+            <rect x="700" y="140" width="280" height="230" class="process-box" rx="5"/>
+            <text x="840" y="170" text-anchor="middle" class="text-title">Apriori Algorithm</text>
+            <text x="840" y="190" text-anchor="middle" class="text-title" style="font-size: 13px;">(mlxtend.frequent_patterns)</text>
+            <text x="710" y="215" class="text-field">• One-hot encode baskets</text>
+            <text x="710" y="235" class="text-field">• Mine frequent itemsets</text>
+            <text x="710" y="255" class="text-field">• Generate association rules</text>
+            <text x="710" y="275" class="text-field">• Metrics: support, confidence, lift</text>
+            <text x="710" y="295" class="text-field">• Evaluate test coverage</text>
+
+            <!-- Association Rules Model -->
+            <rect x="1080" y="140" width="300" height="180" class="model-box" rx="5"/>
+            <text x="1230" y="170" text-anchor="middle" class="text-title">Basket Association Model</text>
+            <text x="1230" y="190" text-anchor="middle" class="text-title" style="font-size: 13px;">(Association Rules)</text>
+            <text x="1090" y="215" class="text-field">• Frequent itemsets</text>
+            <text x="1090" y="235" class="text-field">• Association rules DataFrame</text>
+            <text x="1090" y="255" class="text-field">• BasketRecommender class</text>
+            <text x="1090" y="275" class="text-field">• top_n product suggestions</text>
+
+            <!-- API Endpoint -->
+            <rect x="1080" y="360" width="300" height="150" class="api-box" rx="5"/>
+            <text x="1230" y="390" text-anchor="middle" class="text-title">Basket Recommendation API</text>
+            <text x="1230" y="410" text-anchor="middle" class="text-title" style="font-size: 13px;">(Model Deployment Endpoint)</text>
+            <text x="1090" y="435" class="text-field">• REST API /predict</text>
+            <text x="1090" y="455" class="text-field">• Input: list of product IDs</text>
+            <text x="1090" y="475" class="text-field">• Output: products, confidence, lift</text>
+
+            <!-- Arrows (straight) -->
+            <!-- From Order Items to Basket Transactions -->
+            <path d="M 270 165 L 320 165 L 320 215 L 360 215" class="arrow"/>
+            <!-- From Orders to Basket Transactions -->
+            <path d="M 270 355 L 320 355 L 320 295 L 360 295" class="arrow"/>
+            <!-- From Basket Transactions to Apriori Algorithm -->
+            <path d="M 620 255 L 660 255 L 660 255 L 700 255" class="arrow"/>
+            <!-- From Apriori Algorithm to Basket Association Model -->
+            <path d="M 980 255 L 1080 255" class="arrow"/>
+            <!-- From Basket Association Model to API Endpoint -->
+            <path d="M 1230 320 L 1230 360" class="arrow"/>
+        </svg>
+
+        <div style="margin-top: 30px; padding: 20px; background: #f9f9f9; border-radius: 5px;">
+            <h2 style="color: #333; margin-top: 0;">Overview</h2>
+            <ol style="line-height: 1.8; color: #555;">
+                <li><strong>Source Tables:</strong> Basket data is built by joining the order items table and orders table, filtering out cancelled/pending orders and keeping baskets with at least two products.</li>
+                <li><strong>Basket Transactions:</strong> For each <code>ORDER_ID</code>, product IDs are aggregated into a comma-separated list representing a single shopping basket.</li>
+                <li><strong>Apriori Processing:</strong> Using the Apriori algorithm from <code>mlxtend</code>, baskets are one-hot encoded, frequent itemsets are mined, and association rules are generated and ranked by metrics such as support, confidence, and lift.</li>
+                <li><strong>Basket Association Model:</strong> The rules are wrapped in a <code>BasketRecommender</code> class that, given a basket, returns top-N associated products with their confidence and lift scores.</li>
+                <li><strong>API Endpoint:</strong> The model is deployed as a REST API endpoint that accepts a list of product IDs and returns JSON recommendations (products, confidence, lift) for real-time basket-based recommendations.</li>
+            </ol>
+        </div>
+    </div>
+</body>
+</html>
+
