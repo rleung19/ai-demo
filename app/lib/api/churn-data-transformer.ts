@@ -108,12 +108,12 @@ function buildActionsFromData(
     return baseActions;
   }
 
-  // Find specific risk factors
-  const sizingIssues = riskFactors.find((rf) =>
-    rf.riskFactor.toLowerCase().includes('size') || rf.riskFactor.toLowerCase().includes('fit')
+  // Find specific risk factors (match definition-style names)
+  const returnsRate = riskFactors.find((rf) =>
+    rf.riskFactor.toLowerCase().includes('returns') || rf.riskFactor.toLowerCase().includes('size') || rf.riskFactor.toLowerCase().includes('fit')
   );
   const emailDecay = riskFactors.find((rf) =>
-    rf.riskFactor.toLowerCase().includes('email') || rf.riskFactor.toLowerCase().includes('engagement')
+    rf.riskFactor.toLowerCase().includes('email') || rf.riskFactor.toLowerCase().includes('open rate')
   );
   const noPurchase = riskFactors.find((rf) =>
     rf.riskFactor.toLowerCase().includes('purchase') || rf.riskFactor.toLowerCase().includes('dormant')
@@ -125,12 +125,12 @@ function buildActionsFromData(
 
   // Transform actions with real data
   return baseActions.map((action) => {
-    // Action #2: Address Sizing Issues
-    if (action.id === '2' && sizingIssues) {
+    // Action #2: Address Returns rate > 20%
+    if (action.id === '2' && returnsRate) {
       return {
         ...action,
-        title: `Address Sizing Issues for ${formatNumber(sizingIssues.affectedCustomers)} Customers`,
-        description: `Proactive outreach to ${formatNumber(sizingIssues.affectedCustomers)} customers with 2+ size-related returns. Offer free exchange, size guide consultation, and $20 credit for next purchase.`,
+        title: `Address Returns rate > 20% for ${formatNumber(returnsRate.affectedCustomers)} Customers`,
+        description: `Proactive outreach to ${formatNumber(returnsRate.affectedCustomers)} customers with returns rate > 20%. Offer free exchange, size guide consultation, and $20 credit for next purchase.`,
       };
     }
 

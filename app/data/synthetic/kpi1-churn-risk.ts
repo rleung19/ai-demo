@@ -114,13 +114,13 @@ export const kpi1ChurnRiskData: KPIDetailData = {
   ],
   tableData: [
     {
-      riskFactor: 'Size/Fit Issues (2+ returns)',
+      riskFactor: 'Returns rate > 20%',
       impactScore: '92%',
       affectedCustomers: 89,
       primarySegment: 'VIP, Regular',
     },
     {
-      riskFactor: 'Email Engagement Decay',
+      riskFactor: 'Email open rate < 20%',
       impactScore: '78%',
       affectedCustomers: 156,
       primarySegment: 'All segments',
@@ -132,13 +132,13 @@ export const kpi1ChurnRiskData: KPIDetailData = {
       primarySegment: 'Regular, Dormant',
     },
     {
-      riskFactor: 'Negative Review Sentiment',
+      riskFactor: 'Customer service calls > 2',
       impactScore: '54%',
       affectedCustomers: 42,
       primarySegment: 'VIP',
     },
     {
-      riskFactor: 'Price Sensitivity (cart abandons)',
+      riskFactor: 'Cart abandonment rate > 50%',
       impactScore: '38%',
       affectedCustomers: 118,
       primarySegment: 'New, Regular',
@@ -147,7 +147,7 @@ export const kpi1ChurnRiskData: KPIDetailData = {
   insight: {
     title: '🧠 AI Model Insight',
     content:
-      'The churn prediction model (XGBoost ensemble) identifies email engagement decay + sizing issues as the strongest combined predictor. Customers showing both signals have 4.2x higher churn probability. Recommend prioritizing VIP segment with personalized sizing guidance and exclusive re-engagement offers.',
+      'The churn prediction model (XGBoost ensemble) identifies Returns rate > 20% + Email open rate < 20% + No Purchase in 45+ Days as the strongest predictors of churn. Recommend prioritizing VIP segment with personalized sizing guidance and exclusive re-engagement offers.',
     type: 'info',
   },
   actions: [
@@ -164,9 +164,9 @@ export const kpi1ChurnRiskData: KPIDetailData = {
     },
     {
       id: '2',
-      title: 'Address Sizing Issues for 89 Customers',
+      title: 'Address Returns rate > 20% for 89 Customers',
       description:
-        'Proactive outreach to customers with 2+ size-related returns. Offer free exchange, size guide consultation, and $20 credit for next purchase.',
+        'Proactive outreach to customers with returns rate > 20%. Offer free exchange, size guide consultation, and $20 credit for next purchase.',
       priority: 'high',
       owner: 'COO',
       dueDate: '5 days',

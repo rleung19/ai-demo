@@ -77,7 +77,7 @@ export async function GET() {
         )
       )
       SELECT 
-        'Email Engagement Decay' as risk_factor,
+        'Email open rate < 20%' as risk_factor,
         ae.affected_customers,
         ae.impact_score,
         COALESCE(es.primary_segment, 'All segments') as primary_segment
@@ -137,7 +137,7 @@ export async function GET() {
         )
       )
       SELECT 
-        'Price Sensitivity (cart abandons)' as risk_factor,
+        'Cart abandonment rate > 50%' as risk_factor,
         ac.affected_customers,
         ac.impact_score,
         COALESCE(cs.primary_segment, 'All segments') as primary_segment
@@ -167,7 +167,7 @@ export async function GET() {
         )
       )
       SELECT 
-        'Size/Fit Issues (2+ returns)' as risk_factor,
+        'Returns rate > 20%' as risk_factor,
         ar.affected_customers,
         ar.impact_score,
         COALESCE(rs.primary_segment, 'All segments') as primary_segment
@@ -197,7 +197,7 @@ export async function GET() {
         )
       )
       SELECT 
-        'Negative Review Sentiment' as risk_factor,
+        'Customer service calls > 2' as risk_factor,
         asup.affected_customers,
         asup.impact_score,
         COALESCE(ss.primary_segment, 'All segments') as primary_segment

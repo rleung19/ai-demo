@@ -508,10 +508,10 @@ export default function Home() {
             </div>
             <div>
               <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                AI/ML Executive Dashboard
+                SHE SHOP Executive Dashboard
               </h1>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                SHE SHOP E-Commerce • January 2026
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
               </p>
             </div>
           </div>
@@ -690,105 +690,11 @@ export default function Home() {
           </div>
         )}
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div
-            className="rounded-2xl p-6 border"
-            style={{
-              backgroundColor: 'var(--bg-card)',
-              borderColor: 'var(--border-color)',
-            }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                Total Revenue Impact
-              </span>
-              <span className="px-2 py-1 text-xs font-semibold rounded" style={{ backgroundColor: 'rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
-                On Track
-              </span>
-            </div>
-            <div className="text-3xl font-bold font-mono mb-1" style={{ color: 'var(--text-primary)' }}>
-              $2.4M
-            </div>
-            <div className="text-sm text-emerald-500 flex items-center gap-1">
-              <span>↑</span> 12.3% vs. last quarter
-            </div>
-          </div>
-          <div
-            className="rounded-2xl p-6 border"
-            style={{
-              backgroundColor: 'var(--bg-card)',
-              borderColor: 'var(--border-color)',
-            }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                Cost Savings
-              </span>
-              <span className="px-2 py-1 text-xs font-semibold rounded" style={{ backgroundColor: 'rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
-                Exceeding
-              </span>
-            </div>
-            <div className="text-3xl font-bold font-mono mb-1" style={{ color: 'var(--text-primary)' }}>
-              $485K
-            </div>
-            <div className="text-sm text-emerald-500 flex items-center gap-1">
-              <span>↑</span> 8.7% efficiency gain
-            </div>
-          </div>
-          <div
-            className="rounded-2xl p-6 border"
-            style={{
-              backgroundColor: 'var(--bg-card)',
-              borderColor: 'var(--border-color)',
-            }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                At-Risk Revenue
-              </span>
-              <span className="px-2 py-1 text-xs font-semibold rounded" style={{ backgroundColor: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b' }}>
-                Monitor
-              </span>
-            </div>
-            <div className="text-3xl font-bold font-mono mb-1" style={{ color: 'var(--text-primary)' }}>
-              {kpi1Data?.impact?.revenueImpact
-                ? `$${Math.abs(kpi1Data.impact.revenueImpact / 1000).toFixed(0)}K`
-                : '$320K'}
-            </div>
-            <div className="text-sm text-rose-500 flex items-center gap-1">
-              <span>↓</span> Action needed in 14 days
-            </div>
-          </div>
-          <div
-            className="rounded-2xl p-6 border"
-            style={{
-              backgroundColor: 'var(--bg-card)',
-              borderColor: 'var(--border-color)',
-            }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                AI Confidence
-              </span>
-              <span className="px-2 py-1 text-xs font-semibold rounded" style={{ backgroundColor: 'rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
-                High
-              </span>
-            </div>
-            <div className="text-3xl font-bold font-mono mb-1" style={{ color: 'var(--text-primary)' }}>
-              87%
-            </div>
-            <div className="text-sm flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-              <span>→</span> Average across all models
-            </div>
-          </div>
-        </div>
-
         {/* KPI Grid */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-4">
             <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-              10 Leading AI/ML KPIs
+              Top 10 E-Commerce KPI&apos;s
             </h2>
             <span
               className="px-3 py-1 rounded-full text-xs font-semibold"
