@@ -165,7 +165,7 @@ export default function Home() {
   const [kpiData, setKpiData] = useState<KPIDetailData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>('all');
-  const [selectedTime, setSelectedTime] = useState<string>('30d');
+  const [selectedTime, setSelectedTime] = useState<string>('90d');
   const [isDark, setIsDark] = useState(true);
   const [isLoadingKPI, setIsLoadingKPI] = useState(false);
   const [kpiError, setKpiError] = useState<string | null>(null);
