@@ -336,7 +336,7 @@ export function transformChurnDataToKPI(
         labels: cohorts.map((c) => c.cohort),
         datasets: [
           {
-            label: 'Churn Probability %',
+            label: 'Churn Probability (Color-coded by risk level)',
             data: cohorts.map((c) => c.averageRiskScore),
             backgroundColor: cohorts.map((c) => {
               if (c.averageRiskScore >= 50) return '#f43f5e';
@@ -400,6 +400,56 @@ export function transformChurnDataToKPI(
       ...kpi1ChurnRiskData.chartOptions,
       plugins: {
         ...(kpi1ChurnRiskData.chartOptions?.plugins || {}),
+        legend: {
+          ...(kpi1ChurnRiskData.chartOptions?.plugins?.legend || {}),
+          labels: {
+            ...(kpi1ChurnRiskData.chartOptions?.plugins?.legend?.labels || {}),
+            generateLabels: function (chart: any) {
+              const datasets = chart.data.datasets;
+              const labels: any[] = [];
+
+              datasets.forEach((dataset: any, datasetIndex: number) => {
+                if (dataset.label.includes('Churn Probability')) {
+                  // Legend: Churn Probability + threshold (theme fontColor applied in chart-wrapper)
+                  labels.push({
+                    text: 'Churn Probability < 30%',
+                    fillStyle: '#10b981',
+                    strokeStyle: '#10b981',
+                    datasetIndex,
+                    hidden: false,
+                  });
+                  labels.push({
+                    text: 'Churn Probability 30–50%',
+                    fillStyle: '#f59e0b',
+                    strokeStyle: '#f59e0b',
+                    datasetIndex,
+                    hidden: false,
+                  });
+                  labels.push({
+                    text: 'Churn Probability ≥ 50%',
+                    fillStyle: '#f43f5e',
+                    strokeStyle: '#f43f5e',
+                    datasetIndex,
+                    hidden: false,
+                  });
+                } else {
+                  labels.push({
+                    text: dataset.label,
+                    fillStyle:
+                      typeof dataset.backgroundColor === 'string'
+                        ? dataset.backgroundColor
+                        : dataset.borderColor ?? '#f43f5e',
+                    strokeStyle: dataset.borderColor ?? dataset.backgroundColor ?? '#f43f5e',
+                    datasetIndex,
+                    hidden: false,
+                  });
+                }
+              });
+
+              return labels;
+            },
+          },
+        },
         tooltip: {
           ...(kpi1ChurnRiskData.chartOptions?.plugins?.tooltip || {}),
           callbacks: {
@@ -407,7 +457,11 @@ export function transformChurnDataToKPI(
             label: function (context: any) {
               const datasetLabel = context.dataset.label || '';
               const value = context.parsed.y ?? context.parsed;
-              const baseLabel = datasetLabel ? `${datasetLabel}: ${value.toFixed(1)}%` : `${value.toFixed(1)}%`;
+
+              // Only add % suffix for percentage datasets, not count datasets
+              const isPercentageDataset = datasetLabel.includes('Churn Probability');
+              const formattedValue = isPercentageDataset ? `${value.toFixed(1)}%` : formatNumber(Math.round(value));
+              const baseLabel = datasetLabel ? `${datasetLabel}: ${formattedValue}` : formattedValue;
 
               const index = context.dataIndex;
               const cohort = cohorts[index];
@@ -434,7 +488,7 @@ export function transformChurnDataToKPI(
           position: 'left' as const,
           title: {
             display: true,
-            text: 'Churn Probability %',
+            text: 'Churn Probability',
           },
           min: 0,
           max: 100,

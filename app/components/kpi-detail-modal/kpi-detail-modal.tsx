@@ -404,7 +404,7 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
           {/* Top Churn Risk Factors Table */}
           {kpiData.tableData && kpiData.tableData.length > 0 && metadata.id === 1 && (
             <div className="mb-6">
-              <h3 className="text-sm uppercase font-semibold mb-4 tracking-wide" style={{ color: 'var(--text-muted)' }}>
+              <h3 className="text-sm uppercase font-semibold mb-4 tracking-wide" style={{ color: 'var(--text-secondary)' }}>
                 Top Churn Risk Factors
               </h3>
               <div
@@ -472,7 +472,7 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
                             e.currentTarget.style.backgroundColor = 'transparent';
                           }}
                         >
-                          <td className="px-4 py-3" style={{ color: 'var(--text-primary)' }}>
+                          <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
                             {row.riskFactor || row.risk_factor || 'N/A'}
                           </td>
                           <td className="px-4 py-3">
@@ -481,12 +481,12 @@ export default function KPIDetailModal({ isOpen, onClose, kpiData }: KPIDetailMo
                                 className="w-2 h-2 rounded-full"
                                 style={{ backgroundColor: impactColor }}
                               />
-                              <span style={{ color: 'var(--text-primary)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>
                                 {row.impactScore || row.impact_score || 'N/A'}
                               </span>
                             </div>
                           </td>
-                          <td className="px-4 py-3" style={{ color: 'var(--text-primary)' }}>
+                          <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
                             {typeof row.affectedCustomers === 'number'
                               ? row.affectedCustomers.toLocaleString()
                               : row.affectedCustomers || row.affected_customers || 'N/A'}
