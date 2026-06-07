@@ -1,0 +1,49 @@
+{
+  "captured_at": "2026-06-07T05:21:50.563671+00:00",
+  "source": "adb",
+  "row_counts": {
+    "OML.CHURN_PREDICTIONS": 5003,
+    "OML.USER_PROFILES": 5003,
+    "OML.MODEL_REGISTRY": 4,
+    "OML.CHURN_DATASET_TRAINING": 44997,
+    "ADMIN.USERS": 5003
+  },
+  "summary": {
+    "total_customers": 5003,
+    "at_risk_count": 1341,
+    "average_risk_score": 29.1642,
+    "at_risk_percentage": 26.8039,
+    "total_ltv_at_risk": 1804340.15
+  },
+  "cohorts": [
+    {
+      "cohort": "Dormant",
+      "customer_count": 426,
+      "at_risk_count": 230,
+      "avg_risk_score": 52,
+      "ltv_at_risk": 207718.38
+    },
+    {
+      "cohort": "New",
+      "customer_count": 595,
+      "at_risk_count": 174,
+      "avg_risk_score": 30.32,
+      "ltv_at_risk": 211533.57
+    },
+    {
+      "cohort": "Regular",
+      "customer_count": 3000,
+      "at_risk_count": 685,
+      "avg_risk_score": 26.06,
+      "ltv_at_risk": 1053585.44
+    },
+    {
+      "cohort": "VIP",
+      "customer_count": 976,
+      "at_risk_count": 248,
+      "avg_risk_score": 27.78,
+      "ltv_at_risk": 331117.12
+    }
+  ],
+  "admin_users_accessible": true
+}

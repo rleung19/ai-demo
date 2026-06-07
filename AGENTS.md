@@ -16,3 +16,9 @@ Use `@/openspec/AGENTS.md` to learn:
 Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
+
+## PostgreSQL backend (`feature/postgres-backend`)
+
+- Postgres credentials live in `.env` only (`DATABASE_URL` or `PG*` vars) — never commit secrets.
+- Start tunnel before PG work: `scripts/dev/pg-tunnel.sh`
+- Migration runbook: `docs/POSTGRES_MIGRATION.md`

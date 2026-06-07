@@ -1,0 +1,112 @@
+{
+  "validated_at": "2026-06-07T05:41:24.980490+00:00",
+  "baseline_captured_at": "2026-06-07T05:21:50.563671+00:00",
+  "checks": [
+    {
+      "check": "row_count",
+      "adb": "OML.CHURN_PREDICTIONS",
+      "postgres": "ecomm.churn_predictions",
+      "adb_value": 5003,
+      "postgres_value": 5003,
+      "ok": true
+    },
+    {
+      "check": "row_count",
+      "adb": "OML.USER_PROFILES",
+      "postgres": "ecomm.user_profiles",
+      "adb_value": 5003,
+      "postgres_value": 5003,
+      "ok": true
+    },
+    {
+      "check": "row_count",
+      "adb": "OML.MODEL_REGISTRY",
+      "postgres": "ecomm.model_registry",
+      "adb_value": 4,
+      "postgres_value": 4,
+      "ok": true
+    },
+    {
+      "check": "row_count",
+      "adb": "OML.CHURN_DATASET_TRAINING",
+      "postgres": "ecomm.churn_dataset_training",
+      "adb_value": 44997,
+      "postgres_value": 44997,
+      "ok": true
+    },
+    {
+      "check": "summary.total_customers",
+      "adb_value": 5003.0,
+      "postgres_value": 5003.0,
+      "ok": true
+    },
+    {
+      "check": "summary.at_risk_count",
+      "adb_value": 1341.0,
+      "postgres_value": 1341.0,
+      "ok": true
+    },
+    {
+      "check": "summary.average_risk_score",
+      "adb_value": 29.1642,
+      "postgres_value": 29.1642,
+      "ok": true
+    },
+    {
+      "check": "summary.total_ltv_at_risk",
+      "adb_value": 1804340.15,
+      "postgres_value": 1804340.15,
+      "ok": true
+    },
+    {
+      "check": "cohort.Dormant.customer_count",
+      "adb_value": 426,
+      "postgres_value": 426,
+      "ok": true
+    },
+    {
+      "check": "cohort.Dormant.at_risk_count",
+      "adb_value": 230,
+      "postgres_value": 230,
+      "ok": true
+    },
+    {
+      "check": "cohort.New.customer_count",
+      "adb_value": 595,
+      "postgres_value": 595,
+      "ok": true
+    },
+    {
+      "check": "cohort.New.at_risk_count",
+      "adb_value": 174,
+      "postgres_value": 174,
+      "ok": true
+    },
+    {
+      "check": "cohort.Regular.customer_count",
+      "adb_value": 3000,
+      "postgres_value": 3000,
+      "ok": true
+    },
+    {
+      "check": "cohort.Regular.at_risk_count",
+      "adb_value": 685,
+      "postgres_value": 685,
+      "ok": true
+    },
+    {
+      "check": "cohort.VIP.customer_count",
+      "adb_value": 976,
+      "postgres_value": 976,
+      "ok": true
+    },
+    {
+      "check": "cohort.VIP.at_risk_count",
+      "adb_value": 248,
+      "postgres_value": 248,
+      "ok": true
+    }
+  ],
+  "passed": true,
+  "failure_count": 0
+}

@@ -88,3 +88,9 @@ See:
 
 for detailed reasoning and SQL examples behind the risk factor logic.
 
+## 6. PostgreSQL target (feature/postgres-backend)
+
+The same churn data can be migrated to OCI PostgreSQL under schema **`ecomm`** (single database, single app user). `ADMIN.USERS.AFFINITY_CARD` is merged into `ecomm.user_profiles` at migration time.
+
+See **[POSTGRES_MIGRATION.md](./POSTGRES_MIGRATION.md)** for tunnel setup, DDL, migrate, and validate steps.
+
