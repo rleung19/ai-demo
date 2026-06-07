@@ -8,14 +8,14 @@ For overall backend/frontend architecture and data flow, see:
 
 ## Deployment Model
 
-- **Target**: Single OCI **VM with Docker** running this app in a container, plus **Caddy** as reverse proxy and TLS terminator.
+- **Target**: Single OCI **VM** running one container via **Docker Compose** (or Podman Compose).
 - **Container contents**:
-  - Next.js frontend (port `3000`)
-  - Express churn API server (port `3001`)
-- **Proxy**:
-  - Caddy listens on `:80`/`:443`
-  - Uses `nip.io` for a convenient DNS name (e.g. `YOUR_VM_IP.nip.io`)
-  - Proxies traffic to Next.js on `localhost:3000`
+  - Next.js frontend (port `3000` → host `3002`)
+  - Express churn API (port `3001` → host `3003`) — **only** churn KPI backend
+- **Database**: `DB_BACKEND=oracle` (ADB wallet) or `DB_BACKEND=postgres` (OCI Postgres in VCN)
+- **Proxy**: Caddy on `:443` → UI and API host ports
+
+See **`docker/OCI_DEPLOY.md`** for compose files and deploy steps.
 
 ## Oracle ADB Integration
 
@@ -23,7 +23,7 @@ For overall backend/frontend architecture and data flow, see:
 - In the container image:
   - Install **Oracle Instant Client (Linux)**.
   - Set `LD_LIBRARY_PATH` and `TNS_ADMIN` to the Instant Client + wallet paths.
-  - Call `oracledb.initOracleClient({ libDir, configDir })` in `app/lib/db/oracle.ts`.
+  - Call `oracledb.initOracleClient({ libDir, configDir })` in `server/lib/db/oracle.ts` (Express only).
 - On the OCI VM:
   - Mount the ADB wallet directory into the container (e.g. `-v /opt/wallet:/opt/oracle/wallet`).
   - Provide `ADB_USERNAME`, `ADB_PASSWORD`, `ADB_CONNECTION_STRING`, and `TNS_ADMIN` via env vars.

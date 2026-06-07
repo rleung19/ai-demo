@@ -27,9 +27,12 @@ fi
 echo ""
 echo -e "${BLUE}Configuration:${NC}"
 echo "  NODE_ENV:         ${NODE_ENV:-production}"
+echo "  DB_BACKEND:       ${DB_BACKEND:-oracle}"
 echo "  Next.js Frontend: http://localhost:3000"
 echo "  API Server:       http://localhost:$API_PORT"
-echo "  TNS_ADMIN:        ${TNS_ADMIN:-not set}"
+if [[ "${DB_BACKEND:-oracle}" == "oracle" ]]; then
+  echo "  TNS_ADMIN:        ${TNS_ADMIN:-not set}"
+fi
 echo ""
 
 # Function to cleanup on exit

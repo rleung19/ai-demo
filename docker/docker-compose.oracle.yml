@@ -1,0 +1,7 @@
+# Override for Oracle ADB backend (DB_BACKEND=oracle in .env.oci).
+# Requires Instant Client at ../opt/oracle/instantclient_23_26 and ADB wallet on the VM.
+
+services:
+  app:
+    volumes:
+      - ../wallets/Wallet_HHZJ2H81DDJWN1DM:/opt/oracle/wallet:ro

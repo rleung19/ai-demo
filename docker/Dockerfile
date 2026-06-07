@@ -35,7 +35,7 @@ WORKDIR /app
 COPY ../opt/oracle /opt/oracle
 
 # Ensure Oracle libraries are on the dynamic linker path and advertise the
-# library directory to the app via ORACLE_CLIENT_LIB_DIR (used by app/lib/db/oracle.ts).
+# library directory to Express (server/lib/db/oracle.ts).
 ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_23_26:${LD_LIBRARY_PATH}
 ENV ORACLE_CLIENT_LIB_DIR=/opt/oracle/instantclient_23_26
 

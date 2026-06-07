@@ -1,6 +1,8 @@
-name: ecomm
+# Backward-compatible compose file (Oracle ADB).
+# Prefer: docker compose -f docker-compose.yml -f docker-compose.oracle.yml up -d
+# Postgres: docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d
 
-version: "3.9"
+name: ecomm
 
 services:
   app:
@@ -9,19 +11,25 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       args:
-        # Pass build-time variables for Next.js (embedded in bundle)
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL: ${NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL}
     container_name: ecomm
     restart: unless-stopped
     ports:
-      - "3002:3000"   # Next.js exposed on host 4000
-      - "3003:3001"   # Express churn API exposed on host 4001
+      - "3002:3000"
+      - "3003:3001"
     env_file:
       - .env.oci
-    # All environment variables are now in .env.oci for single-source configuration
-    # This includes: NODE_ENV, database credentials, OCI endpoints, paths, and API URLs
     volumes:
       - ../wallets/Wallet_HHZJ2H81DDJWN1DM:/opt/oracle/wallet:ro
       - ../.oci:/root/.oci:ro
-
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s

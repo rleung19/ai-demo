@@ -1,0 +1,45 @@
+# OCI VM deployment — Next.js UI (:3000) + Express churn API (:3001) in one container.
+#
+# Usage (from docker/):
+#   cp .env.oci.example .env.oci   # edit secrets
+#   ./deploy.sh
+#
+# Oracle ADB (default):
+#   docker compose -f docker-compose.yml -f docker-compose.oracle.yml up -d --build
+#   podman-compose -f docker-compose.yml -f docker-compose.oracle.yml up -d --build
+#
+# PostgreSQL (OCI Postgres in same VCN):
+#   docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --build
+#   podman-compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --build
+
+name: ecomm
+
+services:
+  app:
+    image: ecomm:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL: ${NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL}
+    container_name: ecomm
+    restart: unless-stopped
+    ports:
+      - "3002:3000"   # Next.js UI (host → container)
+      - "3003:3001"   # Express churn API
+    env_file:
+      - .env.oci
+    volumes:
+      # OCI SDK credentials for recommender model deployments
+      - ../.oci:/root/.oci:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s

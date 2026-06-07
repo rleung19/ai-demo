@@ -1,0 +1,5 @@
+# Override for PostgreSQL backend (DB_BACKEND=postgres in .env.oci).
+# No ADB wallet mount. Container must reach PGHOST on the VCN (e.g. 10.0.1.239:5432).
+
+services:
+  app: {}

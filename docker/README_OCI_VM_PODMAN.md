@@ -89,11 +89,22 @@ The `docker/` directory contains:
 
 The initial container topology:
 
-- **Service `app`**:
-  - Next.js frontend (and Next.js API routes) exposed on host port `3002` (container port `3000`).
-  - Express churn API server exposed on host port `3003` (container port `3001`, optional external exposure).
-  - Oracle Instant Client + wallet via a mounted volume.
-  - **Note**: The container runs `npm run dev:all` which starts both Next.js and Express in development/watch mode. This is suitable for a demo environment.
+- **Service `app`** (single container):
+  - Next.js **UI only** on host port `3002` (container `3000`)
+  - Express **churn API** on host port `3003` (container `3001`)
+  - `DB_BACKEND=oracle|postgres` selects database (Express only)
+  - Oracle: Instant Client in image + wallet volume
+  - Postgres: direct VCN connection to OCI Postgres (see `docker/OCI_DEPLOY.md`)
+  - **CMD**: `npm run start:all` (production — compiled Next.js + Express)
+
+**Compose files:**
+
+- `docker-compose.yml` — base service
+- `docker-compose.oracle.yml` — ADB wallet mount
+- `docker-compose.postgres.yml` — no wallet (Postgres backend)
+- `podman-compose.yml` — backward-compatible Oracle-only file
+
+See **[OCI_DEPLOY.md](OCI_DEPLOY.md)** for step-by-step deploy instructions.
 
 ---
 
@@ -108,7 +119,7 @@ The initial container topology:
   - `ADB_WALLET_PATH=/opt/oracle/wallet`
   - `ADB_USERNAME`, `ADB_PASSWORD`, `ADB_CONNECTION_STRING`
 
-`app/lib/db/oracle.ts` already calls `oracledb.initOracleClient({ libDir, configDir })`; you only need to ensure:
+`server/lib/db/oracle.ts` (Express) calls `oracledb.initOracleClient({ libDir, configDir })`; ensure:
 
 - `libDir` points at your Instant Client (`/opt/oracle/instantclient_23_26` inside the container).
 - `configDir` is `/opt/oracle/wallet`.

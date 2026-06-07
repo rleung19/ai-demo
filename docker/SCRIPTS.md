@@ -72,8 +72,9 @@ podman-compose -f podman-compose.yml up -d
 
 Both scripts expect:
 - You're in the `docker/` directory
-- `.env.oci` file exists with required variables
+- `.env.oci` file exists (copy from `.env.oci.example`)
 - `NEXT_PUBLIC_API_URL` is set in `.env.oci`
+- `DB_BACKEND=oracle|postgres` selects compose override (see `OCI_DEPLOY.md`)
 
 **Important**: The scripts automatically export `NEXT_PUBLIC_API_URL` from `.env.oci` to the shell environment before building. This is required because Docker/Podman build arguments read from the shell environment, not from the `env_file` directive (which only applies at runtime).
 

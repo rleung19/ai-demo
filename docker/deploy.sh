@@ -1,114 +1,113 @@
 #!/bin/bash
-# Deployment script for OCI VM
+# Deployment script for OCI VM — Docker Compose or Podman Compose
 # Rebuilds and restarts the ecomm container
 
-set -e  # Exit on error
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+compose() {
+  if docker compose version >/dev/null 2>&1; then
+    docker compose "$@"
+  elif command -v podman-compose >/dev/null 2>&1; then
+    podman-compose "$@"
+  else
+    echo "❌ ERROR: install Docker Compose or podman-compose"
+    exit 1
+  fi
+}
+
+resolve_compose_files() {
+  COMPOSE_FILES=(-f docker-compose.yml)
+  if [[ -f .env.oci ]] && grep -qE '^DB_BACKEND=postgres' .env.oci; then
+    COMPOSE_FILES+=(-f docker-compose.postgres.yml)
+    echo "📦 Compose profile: postgres"
+  else
+    COMPOSE_FILES+=(-f docker-compose.oracle.yml)
+    echo "📦 Compose profile: oracle (ADB)"
+  fi
+}
 
 echo "=========================================="
 echo "Ecomm Container Deployment"
 echo "=========================================="
 echo ""
 
-# Check if .env.oci exists
-if [ ! -f .env.oci ]; then
+if [[ ! -f .env.oci ]]; then
   echo "❌ ERROR: .env.oci not found in docker/ directory"
-  echo "   Please create .env.oci with required variables"
-  echo "   See .env.oci.example for reference"
+  echo "   cp .env.oci.example .env.oci && edit secrets"
   exit 1
 fi
 
-# Check if NEXT_PUBLIC_API_URL is set
 if ! grep -q "NEXT_PUBLIC_API_URL=" .env.oci; then
   echo "⚠️  WARNING: NEXT_PUBLIC_API_URL not found in .env.oci"
-  echo "   This is required for frontend to call the API"
-  echo ""
   read -p "Continue anyway? (y/N): " -n 1 -r
   echo ""
-  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Deployment cancelled"
-    exit 1
-  fi
+  [[ $REPLY =~ ^[Yy]$ ]] || exit 1
 fi
 
-# Optional but recommended: check for agentic flow webhook URL
-if ! grep -q "NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL=" .env.oci; then
-  echo "⚠️  WARNING: NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL not found in .env.oci"
-  echo "   The VIP agentic flow Proceed button will be hidden in production."
-  echo ""
-else
-  echo "📎 Agentic flow webhook configured in .env.oci:"
-  grep "NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL=" .env.oci
-fi
-
-# Show current configuration
 echo "📋 Configuration:"
 grep "NEXT_PUBLIC_API_URL=" .env.oci || echo "   NEXT_PUBLIC_API_URL: (not set)"
-grep "NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL=" .env.oci || echo "   NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL: (not set)"
+grep "DB_BACKEND=" .env.oci || echo "   DB_BACKEND: oracle (default)"
 echo ""
 
-# Export build-time variables from .env.oci
-# This is required because build.args in podman-compose.yml read from the shell environment
-echo "📤 Exporting build-time variables..."
+resolve_compose_files
+
+echo "📤 Exporting build-time variables from .env.oci..."
 export $(grep "^NEXT_PUBLIC_API_URL=" .env.oci | xargs)
 if grep -q "^NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL=" .env.oci; then
   export $(grep "^NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL=" .env.oci | xargs)
 fi
-echo "✅ NEXT_PUBLIC_API_URL exported: $NEXT_PUBLIC_API_URL"
-echo "✅ NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL exported: ${NEXT_PUBLIC_AGENTIC_FLOW_WEBHOOK_URL:-<not set>}"
+echo "✅ NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-<not set>}"
 echo ""
 
-# Step 1: Stop existing container
 echo "🛑 Stopping existing container..."
-podman-compose -f podman-compose.yml down
-echo "✅ Container stopped"
+compose "${COMPOSE_FILES[@]}" down
 echo ""
 
-# Step 2: Rebuild with no cache
-echo "🔨 Rebuilding image (this may take a few minutes)..."
-podman-compose -f podman-compose.yml build --no-cache
-echo "✅ Image rebuilt"
+echo "🔨 Rebuilding image..."
+compose "${COMPOSE_FILES[@]}" build --no-cache
 echo ""
 
-# Step 3: Start container
 echo "🚀 Starting container..."
-podman-compose -f podman-compose.yml up -d
-echo "✅ Container started"
+compose "${COMPOSE_FILES[@]}" up -d
 echo ""
 
-# Step 4: Wait a moment for startup
-echo "⏳ Waiting for services to start..."
-sleep 3
-echo ""
+echo "⏳ Waiting for health check..."
+sleep 5
 
-# Step 5: Show logs
 echo "📄 Recent logs:"
 echo "=========================================="
-podman logs --tail=30 ecomm
+if command -v podman >/dev/null 2>&1 && podman ps --format '{{.Names}}' 2>/dev/null | grep -q '^ecomm$'; then
+  podman logs --tail=30 ecomm
+elif docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^ecomm$'; then
+  docker logs --tail=30 ecomm
+fi
 echo "=========================================="
 echo ""
 
-# Step 6: Show status
 echo "✅ Deployment complete!"
 echo ""
-echo "🌐 Access points:"
-echo "   Frontend:  https://ecomm.40b5c371.nip.io"
-echo "   API:       https://ecomm-api.40b5c371.nip.io/api/health"
-echo "   Swagger:   https://ecomm-api.40b5c371.nip.io/api-docs (public)"
-echo "   Swagger:   http://localhost:3003/api-docs (via SSH tunnel)"
+echo "🌐 Host ports:"
+echo "   UI:  http://localhost:3002  (→ container :3000)"
+echo "   API: http://localhost:3003/api/health  (→ container :3001)"
 echo ""
-echo "📊 Other commands:"
-echo "   View logs: podman logs -f ecomm"
-echo "   Check status: podman ps"
+echo "   Production (via Caddy):"
+echo "   Frontend: https://ecomm.40b5c371.nip.io"
+echo "   API:      https://ecomm-api.40b5c371.nip.io/api/health"
+echo ""
+echo "📊 Commands:"
+echo "   Logs:   podman logs -f ecomm   # or: docker logs -f ecomm"
+echo "   Status: podman ps               # or: docker ps"
 echo ""
 
-# Ask if user wants to follow logs
 read -p "📺 Follow logs now? [Y/n]: " -n 1 -r
 echo ""
-if [[ $REPLY =~ ^[Nn]$ ]]; then
-  echo "Skipping logs. Run 'podman logs -f ecomm' when ready."
-  echo ""
-else
-  echo "Following logs (Ctrl+C to exit)..."
-  echo "=========================================="
-  podman logs -f ecomm
+if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+  if command -v podman >/dev/null 2>&1; then
+    podman logs -f ecomm
+  else
+    docker logs -f ecomm
+  fi
 fi
