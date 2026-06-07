@@ -32,7 +32,7 @@ import basketRecommenderRoutes from './routes/recommender/basket';
 import { generateOpenApiSpec } from './openapi';
 
 // Import database utilities
-import { initializePool, closePool } from './lib/db/oracle';
+import { getDbBackend, initializePool, closePool } from './lib/db';
 
 const app = express();
 // Use API_PORT from env, but default to 3001 to avoid conflict with Next.js (3000)
@@ -115,8 +115,14 @@ app.listen(PORT, async () => {
   console.log('='.repeat(60));
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`TNS_ADMIN: ${process.env.TNS_ADMIN || 'not set'}`);
-  console.log(`ADB_WALLET_PATH: ${process.env.ADB_WALLET_PATH || 'not set'}`);
+  console.log(`DB_BACKEND: ${getDbBackend()}`);
+  if (getDbBackend() === 'postgres') {
+    console.log(`PGHOST: ${process.env.PGHOST || '127.0.0.1'}`);
+    console.log(`PGDATABASE: ${process.env.PGDATABASE || 'not set'}`);
+  } else {
+    console.log(`TNS_ADMIN: ${process.env.TNS_ADMIN || 'not set'}`);
+    console.log(`ADB_WALLET_PATH: ${process.env.ADB_WALLET_PATH || 'not set'}`);
+  }
   console.log('='.repeat(60));
   
   // Initialize connection pool at startup (non-blocking)

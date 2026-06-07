@@ -4,14 +4,15 @@
  */
 
 import express from 'express';
-import { executeQuery } from '../../lib/db/oracle';
+import { executeQuery } from '../../lib/db';
 import { getCache, setCache } from '../../lib/cache';
 import { handleDatabaseError, handleNotFoundError } from '../../lib/api/express-errors';
+import { isDatabaseError, metricsQuery } from '../../lib/sql/churn-queries';
 
 const router = express.Router();
 
 const CACHE_KEY = 'churn:metrics';
-const CACHE_TTL_MILLISECONDS = 60_000; // 60 seconds
+const CACHE_TTL_MILLISECONDS = 60_000;
 
 router.get('/', async (req, res) => {
   try {
@@ -19,29 +20,6 @@ router.get('/', async (req, res) => {
     if (cached) {
       return res.json(cached);
     }
-    // Get latest model info from MODEL_REGISTRY
-    const modelQuery = `
-      SELECT 
-        MODEL_ID,
-        MODEL_NAME,
-        MODEL_VERSION,
-        MODEL_TYPE,
-        AUC_SCORE,
-        ACCURACY,
-        PRECISION_SCORE,
-        RECALL_SCORE,
-        F1_SCORE,
-        OPTIMAL_THRESHOLD,
-        TRAINING_DATE,
-        TRAIN_SAMPLES,
-        TEST_SAMPLES,
-        FEATURE_COUNT,
-        STATUS
-      FROM OML.MODEL_REGISTRY
-      WHERE STATUS = 'ACTIVE'
-      ORDER BY TRAINING_DATE DESC
-      FETCH FIRST 1 ROW ONLY
-    `;
 
     const result = await executeQuery<{
       MODEL_ID: string;
@@ -59,7 +37,7 @@ router.get('/', async (req, res) => {
       TEST_SAMPLES: number;
       FEATURE_COUNT: number;
       STATUS: string;
-    }>(modelQuery);
+    }>(metricsQuery());
 
     const model = result.rows?.[0];
 
@@ -90,7 +68,7 @@ router.get('/', async (req, res) => {
     setCache(CACHE_KEY, response, CACHE_TTL_MILLISECONDS);
     res.json(response);
   } catch (error: any) {
-    if (error.message?.includes('ORA-') || error.message?.includes('database')) {
+    if (isDatabaseError(error.message || '')) {
       return handleDatabaseError(error, res);
     }
     return res.status(503).json({

@@ -1,16 +1,13 @@
 # Churn API Reference
 
-This document describes the REST APIs used by the Churn ML demo. The APIs are implemented both as:
+This document describes the REST APIs used by the Churn ML demo. All churn KPI endpoints are implemented on the **Express** server under `server/routes/churn/*`.
 
-- **Next.js App Router API routes** under `app/api/kpi/churn/*`
-- **Express routes** in the standalone server under `server/routes/churn/*`
+Base URL:
 
-Unless noted otherwise, the request/response shapes are identical across both implementations.
+- **Local**: `http://localhost:3001/api/kpi/churn/...`
+- **Production**: `https://<api-host>/api/kpi/churn/...` (set via `NEXT_PUBLIC_API_URL` for the UI)
 
-Base URLs:
-
-- Next.js (App): `https://<your-domain>/api/kpi/churn/...`
-- Express (Standalone API): `http://<api-host>:3001/api/kpi/churn/...`
+OpenAPI docs: `http://localhost:3001/api-docs` when Express is running.
 
 ---
 
@@ -19,7 +16,7 @@ Base URLs:
 These demo APIs are **not authenticated**. In a production system you would add:
 
 - An API Gateway or reverse proxy (e.g., OCI API Gateway, Caddy, NGINX)
-- JWT or session-based auth on both Next.js and Express servers
+- JWT or session-based auth at the API gateway or Express layer
 
 ---
 
@@ -30,8 +27,7 @@ Returns high-level churn summary metrics.
 ### Request
 
 - **Method**: `GET`
-- **URL (Next.js)**: `/api/kpi/churn/summary`
-- **URL (Express)**: `/api/kpi/churn/summary`
+- **URL**: `/api/kpi/churn/summary` (on Express base URL)
 - **Query params**: _None_
 
 ### Response `200 OK`

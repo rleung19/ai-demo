@@ -61,10 +61,4 @@ curl http://localhost:3001/api/kpi/churn/summary
 curl http://localhost:3001/api/kpi/churn/cohorts
 ```
 
-**Next.js API Routes (Port 3000):**
-```bash
-curl http://localhost:3000/api/health
-curl http://localhost:3000/api/kpi/churn/summary
-```
-
-Note: Next.js API routes may have Oracle connection issues (thin mode limitation).
+**Next.js (Port 3000):** UI only — churn KPI requests go to Express (see browser network tab or `NEXT_PUBLIC_API_URL`).

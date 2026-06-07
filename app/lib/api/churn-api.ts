@@ -1,29 +1,16 @@
 /**
  * Churn Model API Client
- * Task 5.1: API client utility for fetching churn data from backend
  *
- * The frontend can be configured to use either:
- * 1. Next.js API Routes (same origin, port 3000)
- * 2. Express Standalone Server (separate server, port 3001)
+ * The UI always talks to the Express churn API (port 3001 locally, or
+ * NEXT_PUBLIC_API_URL in production). Next.js serves UI only — no duplicate
+ * /api/kpi/churn routes.
  *
- * Configuration:
- * - Set NEXT_PUBLIC_API_URL environment variable to override
- * - Default behavior is controlled by the fallback value below
- *
- * Current default: Express server (http://localhost:3001)
- * To use Next.js API routes: Set NEXT_PUBLIC_API_URL='' or change fallback to ''
- *
- * See docs/API_SERVER_SWITCH.md for detailed switching instructions.
+ * See docs/API_SERVER_SWITCH.md for configuration.
  */
 
-// API Base URL Configuration
-// - Empty string ('') = Use Next.js API routes (same origin)
-// - URL (e.g., 'http://localhost:3001') = Use Express standalone server
-// - Can be overridden via NEXT_PUBLIC_API_URL environment variable
-//
-// Local dev: Defaults to http://localhost:3001 (matches API_PORT in .env)
-// Production: Set NEXT_PUBLIC_API_URL to public API domain
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { getChurnApiBaseUrl } from './churn-api-backend';
+
+const API_BASE_URL = getChurnApiBaseUrl();
 
 export interface ChurnSummary {
   atRiskCount: number;

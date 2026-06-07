@@ -1,157 +1,98 @@
-# API Server Switch Documentation
+# Churn API Configuration
 
 ## Overview
 
-The frontend can be configured to use either:
-1. **Next.js API Routes** (default) - API endpoints served by Next.js on the same port (3000)
-2. **Express Standalone Server** - Separate Express server on port 3001
+The churn dashboard uses a **single API surface**: the **Express** server (`server/`). Next.js (`app/`) serves the UI only and never implements churn KPI routes.
 
-This allows you to compare behavior and performance between the two approaches.
-
-## Current Configuration
-
-The API base URL is configured in `app/lib/api/churn-api.ts`:
-
-```typescript
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+```
+Browser (Next.js UI :3000)
+    │  fetch(NEXT_PUBLIC_API_URL || http://localhost:3001)
+    ▼
+Express churn API (:3001)
+    │  DB_BACKEND=oracle | postgres
+    ▼
+Oracle (ADB)  or  PostgreSQL (ecomm)
 ```
 
-- If `NEXT_PUBLIC_API_URL` is set, it uses that value
-- Otherwise, it defaults to `'http://localhost:3001'` (Express server)
+## Local development
 
-## Switching to Express Server
-
-### Option 1: Use Current Default (Recommended)
-The code is currently configured to use Express server by default. Just start both servers:
+Start both servers:
 
 ```bash
-# Terminal 1: Start Express API server
+# Terminal 1: Express API (Oracle or Postgres)
 npm run server:dev
+# Postgres: npm run server:dev:postgres
 
-# Terminal 2: Start Next.js frontend
+# Terminal 2: Next.js UI
 npm run dev
 ```
 
-### Option 2: Use Environment Variable
-Set `NEXT_PUBLIC_API_URL` in your environment:
+Open `http://localhost:3000`. The UI calls Express at `http://localhost:3001` by default.
 
-```bash
-# In .env or .env.local
-NEXT_PUBLIC_API_URL=http://localhost:3001
+## Configuration
 
-# Then start Next.js
-npm run dev
-```
-
-## Switching to Next.js API Routes
-
-### Option 1: Use Environment Variable (Recommended)
-Set `NEXT_PUBLIC_API_URL` to empty string:
-
-```bash
-# In .env or .env.local
-NEXT_PUBLIC_API_URL=
-
-# Then start Next.js
-npm run dev
-```
-
-### Option 2: Modify Code Directly
-Edit `app/lib/api/churn-api.ts`:
+Base URL is resolved in `app/lib/api/churn-api-backend.ts`:
 
 ```typescript
-// Change from:
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+export const DEFAULT_EXPRESS_API_URL = 'http://localhost:3001';
 
-// To:
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+export function getChurnApiBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_API_URL || DEFAULT_EXPRESS_API_URL;
+}
 ```
 
-Then rebuild:
-```bash
-npm run build
+| `NEXT_PUBLIC_API_URL` | Meaning |
+|-----------------------|---------|
+| **Unset** | Local dev → `http://localhost:3001` |
+| **URL** | Express API base (e.g. `https://ecomm-api.example.com`) |
+
+`DB_BACKEND` is read by **Express only** (`oracle` or `postgres`). Next.js does not connect to the database for churn KPIs.
+
+## API endpoints (Express)
+
+All churn routes live on the Express server:
+
+- `GET /api/health` — health check (includes database status)
+- `GET /api/kpi/churn/summary` — summary metrics
+- `GET /api/kpi/churn/cohorts` — cohort breakdown
+- `GET /api/kpi/churn/cohorts/:name` — cohort detail (Express only)
+- `GET /api/kpi/churn/metrics` — model metrics
+- `GET /api/kpi/churn/chart-data?type=distribution` — chart data
+- `GET /api/kpi/churn/risk-factors` — risk factors
+
+OpenAPI: `http://localhost:3001/api-docs` when the Express server is running.
+
+## Production
+
+Set `NEXT_PUBLIC_API_URL` to your public Express API URL (build-time variable for the Next.js client):
+
+```env
+NEXT_PUBLIC_API_URL=https://ecomm-api.example.com
 ```
 
-## Testing Both Configurations
-
-### Express Server (Port 3001)
-1. Start Express server: `npm run server:dev`
-2. Start Next.js frontend: `npm run dev`
-3. Open `http://localhost:3000`
-4. Check Express server logs for API call frequency
-5. Look for: Cleaner logs, potentially fewer duplicate calls
-
-### Next.js API Routes (Port 3000)
-1. Set `NEXT_PUBLIC_API_URL=` in environment
-2. Start Next.js: `npm run dev`
-3. Open `http://localhost:3000`
-4. Check Next.js server logs for API call frequency
-5. Look for: Next.js-specific behavior, module reload issues
-
-## API Endpoints
-
-Both servers provide the same endpoints:
-
-- `GET /api/health` - Health check
-- `GET /api/kpi/churn/summary` - Churn summary statistics
-- `GET /api/kpi/churn/cohorts` - Cohort breakdown
-- `GET /api/kpi/churn/metrics` - Model metrics
-- `GET /api/kpi/churn/chart-data?type=distribution` - Chart data
-- `GET /api/kpi/churn/risk-factors` - Risk factors
-
-## Comparison Points
-
-When comparing the two approaches, check:
-
-1. **API Call Frequency**
-   - How many times each endpoint is called on page load
-   - Whether React StrictMode causes duplicate calls
-
-2. **Connection Pool Behavior**
-   - Express: Single pool creation, stable across requests
-   - Next.js: May see multiple pool creations due to module reloads
-
-3. **Logging**
-   - Express: Simple request logs
-   - Next.js: More verbose with compilation/render times
-
-4. **Performance**
-   - Response times
-   - Connection pool efficiency
-   - Memory usage
+Ensure CORS on Express allows the Next.js origin if they are on different domains.
 
 ## Troubleshooting
 
-### Express Server Not Responding
-- Check if port 3001 is available: `lsof -i :3001`
-- Verify Express server is running: `curl http://localhost:3001/api/health`
-- Check Express server logs for errors
+### Express not responding
 
-### Next.js API Routes Not Working
-- Verify `NEXT_PUBLIC_API_URL` is empty or not set
-- Check Next.js server logs
-- Ensure Next.js API routes are properly built
+```bash
+lsof -i :3001
+curl http://localhost:3001/api/health
+```
 
-### CORS Errors
-- Express server has CORS enabled by default
-- Next.js API routes don't need CORS (same origin)
+### UI shows no KPI data
 
-## Reverting Changes
+1. Confirm Express is running and healthy.
+2. Check browser network tab — requests should go to `:3001` (or your `NEXT_PUBLIC_API_URL`), not `:3000/api/kpi/churn`.
+3. For Postgres: tunnel running, `DB_BACKEND=postgres`, `DATABASE_URL` set.
 
-To permanently switch back to Next.js API routes:
+### CORS errors
 
-1. Edit `app/lib/api/churn-api.ts`:
-   ```typescript
-   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
-   ```
+Express enables CORS for local dev. For production cross-origin setups, configure allowed origins on Express.
 
-2. Remove or comment out the temporary Express server configuration
+## Related docs
 
-3. Rebuild: `npm run build`
-
-## Notes
-
-- The Express server is kept as a fallback option
-- Both servers use the same database connection logic (`server/lib/db/oracle.ts` vs `app/lib/db/oracle.ts`)
-- API response formats are identical between both servers
-- The frontend code doesn't need to change when switching servers
+- [STARTING_SERVERS.md](STARTING_SERVERS.md) — startup scripts and ports
+- [POSTGRES_MIGRATION.md](POSTGRES_MIGRATION.md) — Postgres backend
+- [CHURN_API_REFERENCE.md](CHURN_API_REFERENCE.md) — request/response contracts

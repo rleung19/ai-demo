@@ -123,11 +123,45 @@ Reports written to `scripts/migration/reports/parity_*.json`. Exit code `1` on m
 
 ## Follow-up (out of scope)
 
-- Switch Express/Next.js routes from `oracledb` to `pg`
-- Point `NEXT_PUBLIC_API_URL` at Postgres-backed server
-- See OpenSpec change `add-adb-to-postgres-data-migration`
+- ~~Switch Express routes from `oracledb` to `pg`~~ — **done** via `DB_BACKEND=postgres`
+- ~~Remove Next.js duplicate API routes~~ — **done** (Express-only; see `remove-nextjs-churn-api-routes`)
+- Point production deploy at Postgres-backed Express
 
-## Related docs
+## 7. Run API on Postgres
+
+```bash
+# Terminal 1: tunnel
+./scripts/dev/pg-tunnel.sh
+
+# Terminal 2: Express API (port 3001)
+npm run server:dev:postgres
+# or: DB_BACKEND=postgres npm run server:dev
+```
+
+Set in `.env`:
+
+```env
+DB_BACKEND=postgres
+PGHOST=127.0.0.1
+PGPORT=15432
+PGUSER=...
+PGPASSWORD="..."
+PGDATABASE=ecommdb
+```
+
+The Node `pg` client uses TLS by default for OCI Postgres (see `PGSSLMODE=disable` in `.env.example` only if your server allows it).
+
+Verify:
+
+```bash
+curl http://localhost:3001/api/health
+curl http://localhost:3001/api/kpi/churn/summary
+python scripts/migration/validate_api_parity.py
+```
+
+UI: start Next.js (`npm run dev`) with `NEXT_PUBLIC_API_URL=http://localhost:3001`.
+
+## Related follow-up
 
 - [DATASET_SOURCE_AND_PREP.md](./DATASET_SOURCE_AND_PREP.md) — how ADB tables were populated
 - [openspec/changes/add-adb-to-postgres-data-migration/design.md](../openspec/changes/add-adb-to-postgres-data-migration/design.md) — full design

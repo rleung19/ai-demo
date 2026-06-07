@@ -35,7 +35,7 @@ export function handleDatabaseError(error: any, res: Response): Response {
     });
   }
 
-  if (errorMessage.includes('ORA-00942') || errorMessage.includes('table or view does not exist')) {
+  if (errorMessage.includes('ORA-00942') || errorMessage.includes('does not exist') || errorMessage.includes('relation')) {
     return res.status(503).json({
       error: 'Resource not found',
       message: 'Required database table or view does not exist.',

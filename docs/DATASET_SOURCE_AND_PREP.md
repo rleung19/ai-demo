@@ -73,7 +73,6 @@ These scripts verify:
 The risk factor queries in:
 
 - `server/routes/churn/risk-factors.ts`
-- `app/api/kpi/churn/risk-factors/route.ts`
 
 depend on:
 

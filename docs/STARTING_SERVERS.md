@@ -76,45 +76,14 @@ PORT=8080
 
 ## Integration
 
-### Option 1: Next.js API Routes (Current)
+Churn KPI data is served **only by Express** (`http://localhost:3001`). Next.js serves the UI on port 3000 and calls Express via `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:3001`).
 
-Next.js API routes are at:
-- `http://localhost:3000/api/health`
-- `http://localhost:3000/api/kpi/churn/*`
+Express endpoints:
 
-**Note**: These may have Oracle connection issues in Next.js dev mode.
-
-### Option 2: Standalone API Server (Recommended)
-
-Standalone API server endpoints:
 - `http://localhost:3001/api/health`
 - `http://localhost:3001/api/kpi/churn/*`
 
-**To use standalone API with Next.js frontend:**
-
-1. **Update `next.config.ts`** to proxy API requests:
-```typescript
-const nextConfig = {
-  async rewrites() {
-    return [
-      {
-        source: '/api/kpi/churn/:path*',
-        destination: 'http://localhost:3001/api/kpi/churn/:path*',
-      },
-      {
-        source: '/api/health',
-        destination: 'http://localhost:3001/api/health',
-      },
-    ];
-  },
-};
-```
-
-2. **Or update API client** to point to standalone server:
-```typescript
-// app/lib/api/churn-api.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-```
+The API client is configured in `app/lib/api/churn-api.ts` (uses `getChurnApiBaseUrl()`). See [API_SERVER_SWITCH.md](API_SERVER_SWITCH.md).
 
 ## Testing
 

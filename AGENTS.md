@@ -22,3 +22,5 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 - Postgres credentials live in `.env` only (`DATABASE_URL` or `PG*` vars) — never commit secrets.
 - Start tunnel before PG work: `scripts/dev/pg-tunnel.sh`
 - Migration runbook: `docs/POSTGRES_MIGRATION.md`
+- Churn API on Postgres: set `DB_BACKEND=postgres`, run `npm run server:dev:postgres`
+- Express-only UI (default): Next.js skips Oracle pool; unset `NEXT_PUBLIC_API_URL` or set to `http://localhost:3001`
