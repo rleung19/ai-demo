@@ -22,8 +22,8 @@
 
 ## 4. Validation
 
-- [ ] 4.1 `npm run dev` — no Oracle init logs from Next.js
-- [ ] 4.2 `npm run server:dev:postgres` + UI — dashboard loads all KPIs
+- [x] 4.1 `npm run dev` — no Oracle init logs from Next.js
+- [x] 4.2 `npm run server:dev:postgres` + UI — dashboard loads all KPIs
 - [x] 4.3 `npm run build` succeeds
 - [x] 4.4 Confirm no imports of `@/app/lib/db/oracle` remain
 

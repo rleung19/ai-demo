@@ -4,7 +4,7 @@
 
 - [x] 0.1 Confirm working on branch `feature/postgres-backend`
 - [x] 0.2 Verify ADB connectivity (`node scripts/test-node-connection.js` as OML user)
-- [ ] 0.3 Verify Postgres connectivity via SSH tunnel (`127.0.0.1:15432` → `10.0.1.239:5432`)
+- [x] 0.3 Verify Postgres connectivity via SSH tunnel (`127.0.0.1:15432` → `10.0.1.239:5432`)
 - [x] 0.4 Add Postgres vars to `.env.example` (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `DATABASE_URL`)
 - [x] 0.5 Document tunnel command in runbook (`ssh -N -L 15432:10.0.1.239:5432 40b5c371.nip.io`)
 - [x] 0.6 Add `scripts/dev/pg-tunnel.sh` (start tunnel if port 15432 not listening)
@@ -27,7 +27,7 @@
 - [x] 2.5 Create `ecomm.churn_dataset_training` (Tier 2)
 - [x] 2.6 Create Postgres views: `churn_training_data`, `churn_user_features`, `churn_training_features` (port `sql/create_feature_views.sql`)
 - [x] 2.7 Add indexes (PKs, churn label, risk score, prediction date, model registry status)
-- [ ] 2.8 Apply DDL on target Postgres via tunnel (`psql -f sql/postgres/001_create_schema.sql`)
+- [x] 2.8 Apply DDL on target Postgres via tunnel (`psql -f sql/postgres/001_create_schema.sql`)
 
 ## 3. Migration Scripts
 
@@ -49,11 +49,11 @@
 
 ## 4. Validation & Sign-off
 
-- [ ] 4.1 Run full migration on `feature/postgres-backend` against OCI Postgres
-- [ ] 4.2 Run `validate_parity.py` — all checks pass
-- [ ] 4.3 Manual spot-check: `\dt ecomm.*` and sample `SELECT` from each table
-- [ ] 4.4 Manual spot-check: VIP cohort user count matches ADB
-- [ ] 4.5 Re-run migration with `--truncate` to confirm idempotency
+- [x] 4.1 Run full migration on `feature/postgres-backend` against OCI Postgres
+- [x] 4.2 Run `validate_parity.py` — all checks pass (`scripts/migration/reports/parity_20260607T054124Z.json`, `passed: true`)
+- [x] 4.3 Manual spot-check: `\dt ecomm.*` and sample `SELECT` from each table
+- [x] 4.4 Manual spot-check: VIP cohort user count matches ADB (976 customers, 248 at-risk in parity report)
+- [x] 4.5 Re-run migration with `--truncate` to confirm idempotency (`parity_20260608T061046Z.json` passed after reload)
 
 ## 5. Documentation
 

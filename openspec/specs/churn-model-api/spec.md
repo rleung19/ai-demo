@@ -69,35 +69,44 @@ The endpoint SHALL return:
 - **AND** API returns JSON with chart-ready data structure
 
 ### Requirement: Database Connection
-The system SHALL connect to Oracle Autonomous Database Serverless using wallet-based authentication.
+The system SHALL connect to the churn data store using a configurable database backend selected by environment variable `DB_BACKEND`.
 
-The connection SHALL:
-- Use OML4Py for model operations (Python pipeline)
-- Use oracledb/cx_Oracle for API server (Node.js)
-- Support both ADMIN and OML schemas
-- Handle connection errors gracefully
+Supported backends:
 
-#### Scenario: Establish database connection
-- **WHEN** API server starts
-- **THEN** connection pool is established to ADB
-- **AND** connection uses wallet files from environment variable
-- **AND** connection errors are logged and API returns 503 status
+- **`oracle`** (default): Oracle Autonomous Database via wallet-based `oracledb` connection to `OML` schema (and `ADMIN.USERS` where required)
+- **`postgres`**: OCI PostgreSQL via `pg` connection pool using `DATABASE_URL` or `PG*` environment variables, querying schema **`ecomm`**
+
+The connection layer SHALL:
+- Expose a unified `executeQuery` interface for churn route handlers
+- Initialize a connection pool at Express API server startup for the active backend
+- Close the pool gracefully on shutdown
+- Return HTTP 503 when the active backend is unreachable
+
+#### Scenario: Express starts with Postgres backend
+- **WHEN** `DB_BACKEND=postgres` and valid `DATABASE_URL` or `PG*` vars are set
+- **AND** SSH tunnel to Postgres is available (if required)
+- **THEN** Express initializes a `pg` pool to the target database
+- **AND** health check reports `backend: postgres` and `connected: true`
+
+#### Scenario: Express starts with Oracle backend (default)
+- **WHEN** `DB_BACKEND` is unset or `oracle`
+- **THEN** Express uses `oracledb` pool and wallet configuration
+- **AND** churn routes query `OML.*` as before
+
+#### Scenario: Database connection failure
+- **WHEN** the active backend cannot be reached
+- **THEN** API returns HTTP 503 on churn endpoints
+- **AND** error is logged with backend type (no secrets)
 
 ### Requirement: Model Loading and Scoring
-The system SHALL load churn models from OML datastore and score customer data on-demand.
+The system SHALL serve churn predictions from pre-materialized rows in the active backend's predictions table.
 
-The scoring process SHALL:
-- Load latest model version from OML datastore
-- Prepare customer features from database views
-- Generate churn probability predictions
-- Aggregate results for API responses
+For API read paths, the system SHALL NOT require live ML scoring in Node.js; predictions are loaded during the ML pipeline into `OML.CHURN_PREDICTIONS` or `ecomm.churn_predictions`.
 
 #### Scenario: Score customers for API request
 - **WHEN** API endpoint requires customer scores
-- **THEN** API loads model from OML datastore
-- **AND** API queries feature views for current customers
-- **AND** API generates predictions using loaded model
-- **AND** API caches results for subsequent requests (optional)
+- **THEN** API reads existing prediction rows from the active backend
+- **AND** API does not invoke OML4Py or local pickle models during the HTTP request
 
 ### Requirement: Error Handling
 The system SHALL handle errors gracefully and provide meaningful error responses.
@@ -206,4 +215,49 @@ The endpoint SHALL return:
 - **THEN** API returns cached response
 - **AND** response includes same data as original request
 - **AND** cache key includes cohort name, limit, offset, and sort parameters
+
+### Requirement: PostgreSQL Churn Data Store
+The project SHALL maintain a PostgreSQL database on OCI (private network) containing churn data migrated from Oracle ADB OML schema, suitable for a future Postgres-backed churn API.
+
+The Postgres data store SHALL include:
+- All churn tables in **one database**, under **one application schema** (`ecomm`), accessed by **one application user** (credentials in environment only)
+- `user_profiles`, `churn_predictions`, and `model_registry` with data equivalent to ADB Tier 1 objects
+- `affinity_card` on `user_profiles` for VIP cohort assignment (merged from ADB `ADMIN.USERS` at migration)
+- Optional training data and views (Tier 2) for ML pipeline on Postgres
+
+#### Scenario: Postgres data available for API development
+- **WHEN** migration and validation complete
+- **THEN** Postgres contains churn tables with row counts matching ADB
+- **AND** aggregate queries for summary and cohorts produce equivalent results to ADB
+
+### Requirement: Postgres Churn SQL Port
+The Postgres backend SHALL implement SQL equivalent to Oracle churn queries against schema `ecomm`, including summary aggregates, cohort CTE with `affinity_card`, model metadata, risk factors (`string_agg`), and chart distribution.
+
+Column semantics and API JSON mapping SHALL remain identical to the Oracle backend.
+
+#### Scenario: API parity validation
+- **WHEN** validation script runs against Express with `DB_BACKEND=postgres`
+- **THEN** summary totals and cohort customer counts match `scripts/migration/fixtures/adb_baseline.json`
+
+### Requirement: Dual-Backend Configuration
+The project SHALL support running Oracle and Postgres backends from the same codebase via `DB_BACKEND` (`oracle` | `postgres`, default `oracle`).
+
+#### Scenario: Switch backend locally
+- **WHEN** developer changes `DB_BACKEND` and restarts Express
+- **THEN** the same route paths serve data from the selected backend without route handler changes
+
+### Requirement: Churn REST API Server
+The system SHALL expose all churn KPI REST endpoints exclusively through the **Express standalone API server** (`server/routes/churn/*`), not through Next.js App Router API routes.
+
+The Next.js UI SHALL call Express via `NEXT_PUBLIC_API_URL` (default `http://localhost:3001`).
+
+#### Scenario: UI fetches churn summary
+- **WHEN** the dashboard loads churn KPIs
+- **THEN** the browser requests `GET {NEXT_PUBLIC_API_URL}/api/kpi/churn/summary`
+- **AND** Express handles the request
+- **AND** no Next.js route under `app/api/kpi/churn/` exists
+
+#### Scenario: Next.js dev server startup
+- **WHEN** developer runs `npm run dev`
+- **THEN** Next.js does not initialize an Oracle connection pool for churn APIs
 
